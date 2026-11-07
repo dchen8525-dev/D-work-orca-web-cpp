@@ -1,0 +1,31 @@
+# Build outputs
+build/
+build-*/
+out/
+vcpkg_installed/
+CMakeUserPresets.json
+
+# IDE / editor
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Native artifacts (none are checked in; release binaries come from CI)
+*.exe
+*.dll
+*.lib
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.a
+*.so
+*.o
+
+# Local secrets / runtime state
+*.log
+server.json
+gateway.json
+sessions.json
+*.tmp

@@ -1,0 +1,71 @@
+name: Release
+
+# P0 skeleton: on every v* tag build both native binaries, verify their size,
+# checksum them and upload them as workflow artifacts. P6 adds the deb payload,
+# systemd unit, static web pages, Caddy bootstrap and `gh release create`.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows-gateway:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install vcpkg dependencies (static CRT)
+        shell: pwsh
+        run: |
+          vcpkg install --triplet x64-windows-static `
+            openssl nlohmann-json libsodium boost-beast
+      - name: Configure
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          cmake -S . -B build -A x64 `
+            -DORCA_BUILD_VERSION="$version" `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DVCPKG_MANIFEST_MODE=OFF `
+            -DORCA_REQUIRE_NETWORK_DEPS=ON
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Stage + checksum
+        shell: pwsh
+        run: |
+          Copy-Item build/gateway/Release/orca-gateway.exe orca-gateway-windows-x64.exe
+          cmake -DORCA_TARGET_FILE=orca-gateway-windows-x64.exe `
+            -DORCA_MAX_BYTES=8388608 -P cmake/SizeReport.cmake
+          (Get-FileHash orca-gateway-windows-x64.exe -Algorithm SHA256).Hash.ToLower() |
+            Out-File -Encoding ascii orca-gateway-windows-x64.exe.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gateway-exe
+          path: |
+            orca-gateway-windows-x64.exe
+            orca-gateway-windows-x64.exe.sha256
+
+  linux-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: bash scripts/setup-deps.sh
+      - name: Build + test + size gate
+        env:
+          ORCA_VERSION: ${{ github.ref_name }}
+        run: bash scripts/build.sh
+      - name: Stage + checksum
+        run: |
+          cp build/server/orca-server orca-server-linux-x64
+          sha256sum orca-server-linux-x64 > orca-server-linux-x64.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-binary
+          path: |
+            orca-server-linux-x64
+            orca-server-linux-x64.sha256

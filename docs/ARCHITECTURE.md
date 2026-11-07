@@ -1,0 +1,64 @@
+# 架构
+
+## 三个进程
+
+| 进程 | 运行位置 | 职责 | 持有凭据 |
+|---|---|---|---|
+| `web/`（静态页） | 手机浏览器 | 登录、看板、任务详情、审批/提问、新建、中止 | 会话 cookie |
+| `orca-server` | VPS | HTTP 登录、静态页、`/client` 与 `/gateway` 两个 WebSocket、id 重映射与流广播 | 密码 hash、gateway key |
+| `orca-gateway` | 家里 Windows，与桌面 Orca 同机 | 主动外连 hub、一条 loopback 连到 Orca、E2EE v2、本机管理页、自更新 | gateway key、Orca device token |
+
+TLS 由 VPS 前的 Caddy 终止；server 本身只听 `127.0.0.1`。gateway 侧需要真正的 WSS 客户端（OpenSSL）。
+
+## 模块
+
+```
+protocol/   24 字段 transcript、canonical JSON、wire 帧、17 项能力集、E2EE v2 帧几何与明文握手校验；P1-c 起补 secretbox 封包
+common/     version / log / args / 平台路径 / 纯 C++ SHA-256、HMAC、HKDF、base64
+server/     http_app / sessions / hub / static_files / auth
+gateway/    config / hub_link / orca_bridge / admin_server / self_update / pairing
+web/        index.html + styles.css + ES modules（无构建、无框架）
+tests/      unit / vectors / integration
+packaging/  deb / windows / caddy
+```
+
+## 最重要的一条：JSON 透传
+
+原项目里 `mutation envelope`（canonical JSON + SHA-256 指纹、`clientOperationId`、`expectedRuntimeFence`）**在浏览器中构造**，
+`agentSession.*` / `automation.*` 的 `method` / `params` / `result` 在 server 与 gateway 里全部当作不透明 JSON 搬运，
+只做 id 重映射。因此 C++ 后端**不需要**实现 canonicalize、指纹、fence 语义或 create 重试。
+
+必须由 C++ 精确实现的是：E2EE v2 密码学、两条 wire 协议、hub 状态机、会话/鉴权/限流、配对码解码、
+能力集重播、部署契约。详见 `docs/PROTOCOL.md`。
+
+## 信任边界（沿用原项目）
+
+| 段 | 加密 | 谁能看到明文 |
+|---|---|---|
+| 手机 ↔ VPS | TLS | 手机、VPS |
+| VPS 进程内 | — | VPS 能看到明文 RPC（v1 明确接受的取舍） |
+| gateway ↔ Orca | E2EE v2 | 家里机器、Orca |
+
+## 阶段
+
+| P | 交付 | 门禁 |
+|---|---|---|
+| P0 | 骨架、双平台构建、体积门禁、CI | Windows / Linux 编译 + 测试 + 体积报告 |
+| P1-a | 免依赖密码学基座、24 字段 transcript、canonical JSON、wire 帧、golden 向量 | **已完成**：6/6 CTest，与 JS 独立实现逐字节一致 |
+| P1-b | E2EE v2 免依赖切片：能力集、header/nonce/计数器、明文握手帧与 strict ready 校验 | **已完成**：protocol 117 项断言，逐字节比对 JS 第二实现 |
+| P1-c | X25519 派生 + secretbox 封包 + scrypt | 待 libsodium / 静态 OpenSSL 就位 |
+| P2 | Orca JSON-RPC | 真实 Orca：`status.get` / `project.list` / `worktree.ps` |
+| P3 | server 全量 | 本地集成 + `/api/health` |
+| P4 | gateway 全量 | mock hub + 真实 Orca，断线重连不泄漏 Orca socket |
+| P5 | 零构建原生前端 | 390×844 下完整写入周期 |
+| P6 | 打包 + 全链路联调 | 真实 VPS + Orca + 手机端到端 |
+
+## 已知风险
+
+1. `nacl.box.before` 是 `HSalsa20(X25519(shared))`，libsodium 必须用 `crypto_box_beforenm`；直接用
+   `crypto_scalarmult` 会派生出完全不同的密钥。
+2. E2EE v2 transcript 是 24 个定长字段拼接（1 + 11 + 12）、header 42B / nonce 24B、双向独立 uint64 计数器；
+   偏移错误表现为"对端无响应"，必须靠 P1 的固定向量测试定位。
+3. Windows 上 OpenSSL 默认不加载系统根证书，gateway 的 WSS 需要显式 CA bundle 或注入系统 store。
+4. 无框架前端的状态同步（输入框草稿、`<details>` 展开态、审批局部状态、markdown XSS）是 P5 主要工作量。
+5. 静态 CRT（`/MT`）要求 vcpkg 使用 `x64-windows-static`；混用 `x64-windows`（动态 CRT）会链接冲突。

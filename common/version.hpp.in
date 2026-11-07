@@ -1,0 +1,13 @@
+#pragma once
+
+#include <string>
+
+namespace orca {
+
+// Injected by CMake from ORCA_BUILD_VERSION (release tags override it).
+inline constexpr char kBuildVersion[] = "@ORCA_BUILD_VERSION@";
+
+const char* buildVersion() noexcept;
+std::string versionBanner(const char* program);
+
+}  // namespace orca

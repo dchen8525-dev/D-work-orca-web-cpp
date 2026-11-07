@@ -1,0 +1,182 @@
+{
+  "source": "D:/work/orca-web e2ee-v2-client.ts + envelope.ts (independent JS reimplementation)",
+  "generatedBy": "tools/export-vectors.mjs (one-off; NOT part of the build)",
+  "input": {
+    "clientPublicKeyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+    "clientNonceHex": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+    "hostPublicKeyHex": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+    "hostNonceHex": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+    "sharedSecretHex": "8182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0",
+    "transport": "direct",
+    "relayHostId": ""
+  },
+  "transcriptHex": "00000006646f6d61696e0000001e6f7263612d6d6f62696c652d653265652f76322f7472616e736372697074000000166d6f62696c652d746f2d6465736b746f702e747970650000000a653265655f68656c6c6f000000196d6f62696c652d746f2d6465736b746f702e76657273696f6e0000000400000002000000236d6f62696c652d746f2d6465736b746f702e636c69656e742d7075626c69632d6b6579000000200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f200000001e6d6f62696c652d746f2d6465736b746f702e636c69656e742d6e6f6e6365000000202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40000000266d6f62696c652d746f2d6465736b746f702e6361706162696c69746965732e6672616d696e670000000800000001000000020000002c6d6f62696c652d746f2d6465736b746f702e6361706162696c69746965732e7061796c6f61642d6b696e6473000000160000000200000004746578740000000662696e617279000000226d6f62696c652d746f2d6465736b746f702e636f6e746578742e70726f746f636f6c000000106f7263612d6d6f62696c652d65326565000000236d6f62696c652d746f2d6465736b746f702e636f6e746578742e696e69746961746f72000000066d6f62696c65000000236d6f62696c652d746f2d6465736b746f702e636f6e746578742e726573706f6e646572000000076465736b746f70000000236d6f62696c652d746f2d6465736b746f702e636f6e746578742e7472616e73706f727400000006646972656374000000276d6f62696c652d746f2d6465736b746f702e636f6e746578742e72656c61792d686f73742d696400000000000000166465736b746f702d746f2d6d6f62696c652e747970650000000a653265655f7265616479000000196465736b746f702d746f2d6d6f62696c652e76657273696f6e0000000400000002000000246465736b746f702d746f2d6d6f62696c652e6465736b746f702d7075626c69632d6b6579000000204142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60000000236465736b746f702d746f2d6d6f62696c652e636c69656e742d6e6f6e63652d6563686f000000202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f400000001f6465736b746f702d746f2d6d6f62696c652e6465736b746f702d6e6f6e6365000000206162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80000000236465736b746f702d746f2d6d6f62696c652e73656c656374696f6e2e6672616d696e670000000400000002000000296465736b746f702d746f2d6d6f62696c652e73656c656374696f6e2e7061796c6f61642d6b696e6473000000160000000200000004746578740000000662696e617279000000226465736b746f702d746f2d6d6f62696c652e636f6e746578742e70726f746f636f6c000000106f7263612d6d6f62696c652d65326565000000236465736b746f702d746f2d6d6f62696c652e636f6e746578742e696e69746961746f72000000066d6f62696c65000000236465736b746f702d746f2d6d6f62696c652e636f6e746578742e726573706f6e646572000000076465736b746f70000000236465736b746f702d746f2d6d6f62696c652e636f6e746578742e7472616e73706f727400000006646972656374000000276465736b746f702d746f2d6d6f62696c652e636f6e746578742e72656c61792d686f73742d696400000000",
+  "transcriptFieldCount": 24,
+  "transcriptHashHex": "c5d8495cab3481dc0e501e80c197feab46d970553a66860b0a174f7f79af753b",
+  "saltHex": "53777b53d980211b48ffacb5f976a9e87a23b540bd6741497b5e4a10d4eef05f",
+  "infoHex": "6f7263612d6d6f62696c652d653265652f76322f73657373696f6e00c5d8495cab3481dc0e501e80c197feab46d970553a66860b0a174f7f79af753b",
+  "hkdfExpandedHex": "8fb1e8d43917657d484ab235b78530ea6fa951bfdf0311e3eb1da6d69df2ffe8ab132153c94b306590ce591bc70e044f6c504be8f0ce2cae0cb3fe5b6515d216a6c1659603cc6a2a66f0ab5c579cd5de09c3b8674b69526c4befb54cc591fe48",
+  "mobileToDesktopKeyHex": "8fb1e8d43917657d484ab235b78530ea6fa951bfdf0311e3eb1da6d69df2ffe8",
+  "desktopToMobileKeyHex": "ab132153c94b306590ce591bc70e044f6c504be8f0ce2cae0cb3fe5b6515d216",
+  "sessionIdHex": "a6c1659603cc6a2a66f0ab5c579cd5de09c3b8674b69526c4befb54cc591fe48",
+  "canonicalInput": {
+    "method": "agentSession.send",
+    "sessionId": "s-1",
+    "fields": {
+      "b": 2,
+      "a": "x",
+      "c": null,
+      "d": [
+        true,
+        false,
+        "y"
+      ],
+      "e": {
+        "z": 1,
+        "a": "n"
+      }
+    }
+  },
+  "canonical": "{\"fields\":{\"a\":\"x\",\"b\":2,\"c\":null,\"d\":[true,false,\"y\"],\"e\":{\"a\":\"n\",\"z\":1}},\"method\":\"agentSession.send\",\"sessionId\":\"s-1\"}",
+  "fingerprintHex": "709ce72dc739f25cc334dc0cc697fc8d32b04432ab5fc63b47f30e153c8348bf",
+  "clientCapabilities": [
+    "agent-session.structured.v1",
+    "agent-session.structured.claude.v1",
+    "agent-session.structured.registered-agents.v1",
+    "agent-session.structured.client-launch-mode.v1",
+    "agent-session.options.optional-model.v1",
+    "agent-session.pending-send-result.v1",
+    "agent-session.turn-item.v1",
+    "agent-session.current-requests.v1",
+    "agent-session.commands-on-request.v1",
+    "agent-session.coherent-model-catalog.v1",
+    "agent-session.session-boundary.v1",
+    "agent-session.background-task-stop.v1",
+    "agent-session.background-task-row-stop.v1",
+    "agent-session.background-task-child-views.v1",
+    "agentSession.create.message.v1",
+    "session-tabs.close-intent.v1",
+    "session-tabs.authoritative-inventory.v1"
+  ],
+  "capabilitiesCount": 17,
+  "capabilitiesSha256Hex": "fe078124b923e558158c784dacf449d97d49b30f8e9fb0345fe929d8f8fa5133",
+  "sealFrames": {
+    "sessionIdHex": "a6c1659603cc6a2a66f0ab5c579cd5de09c3b8674b69526c4befb54cc591fe48",
+    "headerLength": 42,
+    "nonceLength": 24,
+    "secretboxMacLength": 16,
+    "minSealedFrameLength": 82,
+    "maxCounterHex": "ffffffffffffffff",
+    "cases": [
+      {
+        "name": "first mobile->desktop text",
+        "direction": 0,
+        "kind": 0,
+        "counterHex": "0000000000000000",
+        "headerHex": "a6c1659603cc6a2a66f0ab5c579cd5de09c3b8674b69526c4befb54cc591fe4800000000000000000000",
+        "nonceHex": "a6c1659603cc6a2a66f0ab5c020000000000000000000000"
+      },
+      {
+        "name": "first desktop->mobile text",
+        "direction": 1,
+        "kind": 0,
+        "counterHex": "0000000000000000",
+        "headerHex": "a6c1659603cc6a2a66f0ab5c579cd5de09c3b8674b69526c4befb54cc591fe4801000000000000000000",
+        "nonceHex": "a6c1659603cc6a2a66f0ab5c020100000000000000000000"
+      },
+      {
+        "name": "second mobile->desktop text",
+        "direction": 0,
+        "kind": 0,
+        "counterHex": "0000000000000001",
+        "headerHex": "a6c1659603cc6a2a66f0ab5c579cd5de09c3b8674b69526c4befb54cc591fe4800000000000000000001",
+        "nonceHex": "a6c1659603cc6a2a66f0ab5c020000000000000000000001"
+      },
+      {
+        "name": "mobile->desktop binary, sparse counter",
+        "direction": 0,
+        "kind": 1,
+        "counterHex": "0102030405060708",
+        "headerHex": "a6c1659603cc6a2a66f0ab5c579cd5de09c3b8674b69526c4befb54cc591fe4800010102030405060708",
+        "nonceHex": "a6c1659603cc6a2a66f0ab5c020001000102030405060708"
+      },
+      {
+        "name": "desktop->mobile binary, MAX_COUNTER",
+        "direction": 1,
+        "kind": 1,
+        "counterHex": "ffffffffffffffff",
+        "headerHex": "a6c1659603cc6a2a66f0ab5c579cd5de09c3b8674b69526c4befb54cc591fe480101ffffffffffffffff",
+        "nonceHex": "a6c1659603cc6a2a66f0ab5c02010100ffffffffffffffff"
+      }
+    ]
+  },
+  "handshake": {
+    "clientPublicKeyB64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
+    "clientNonceB64": "ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0A=",
+    "desktopPublicKeyB64": "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVpbXF1eX2A=",
+    "desktopNonceB64": "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7fH1+f4A=",
+    "transcriptHashB64": "xdhJXKs0gdwOUB6AwZf+q0bZcFU6ZoYLChdPf3mvdTs=",
+    "deviceToken": "device-token-fixed",
+    "hello": {
+      "type": "e2ee_hello",
+      "v": 2,
+      "clientPublicKeyB64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
+      "clientNonceB64": "ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0A=",
+      "capabilities": {
+        "framing": [
+          2
+        ],
+        "payloadKinds": [
+          "text",
+          "binary"
+        ]
+      },
+      "context": {
+        "protocol": "orca-mobile-e2ee",
+        "initiator": "mobile",
+        "responder": "desktop",
+        "transport": "direct"
+      }
+    },
+    "ready": {
+      "type": "e2ee_ready",
+      "v": 2,
+      "desktopPublicKeyB64": "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVpbXF1eX2A=",
+      "clientNonceB64": "ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0A=",
+      "desktopNonceB64": "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7fH1+f4A=",
+      "selection": {
+        "framing": 2,
+        "payloadKinds": [
+          "text",
+          "binary"
+        ]
+      },
+      "context": {
+        "protocol": "orca-mobile-e2ee",
+        "initiator": "mobile",
+        "responder": "desktop",
+        "transport": "direct"
+      }
+    },
+    "auth": {
+      "type": "e2ee_auth",
+      "v": 2,
+      "transcriptHashB64": "xdhJXKs0gdwOUB6AwZf+q0bZcFU6ZoYLChdPf3mvdTs=",
+      "deviceToken": "device-token-fixed"
+    },
+    "authenticated": {
+      "type": "e2ee_authenticated",
+      "v": 2,
+      "transcriptHashB64": "xdhJXKs0gdwOUB6AwZf+q0bZcFU6ZoYLChdPf3mvdTs="
+    }
+  },
+  "base64": {
+    "empty": "",
+    "oneByte": "61",
+    "oneByteEncoded": "YQ==",
+    "twoBytes": "6162",
+    "twoBytesEncoded": "YWI=",
+    "threeBytes": "616263",
+    "threeBytesEncoded": "YWJj"
+  }
+}
