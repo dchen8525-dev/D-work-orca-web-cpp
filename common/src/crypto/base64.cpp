@@ -72,12 +72,12 @@ bool base64Decode(std::string_view text, Bytes& out) {
         for (int j = 0; j < 4; ++j) {
             const char c = text[i + j];
             if (c == '=') {
-                if (!last || j < 4 - padding) return false;
+                if (!last || j < 4 - static_cast<int>(padding)) return false;
                 continue;
             }
             values[j] = valueOf(c);
             if (values[j] < 0) return false;
-            if (last && padding > 0 && j >= 4 - padding) return false;
+            if (last && padding > 0 && j >= 4 - static_cast<int>(padding)) return false;
         }
         const std::uint32_t chunk = (static_cast<std::uint32_t>(values[0]) << 18) |
                                     (static_cast<std::uint32_t>(std::max(values[1], 0)) << 12) |

@@ -1,5 +1,7 @@
 #include <orca/protocol/box_crypto.hpp>
 
+#include <cstdio>
+#include <cstdlib>
 #include <mutex>
 #include <sodium.h>
 
@@ -11,7 +13,14 @@ namespace {
 
 void ensureSodium() {
     static std::once_flag flag;
-    std::call_once(flag, [] { sodium_init(); });
+    std::call_once(flag, [] {
+        // sodium_init: 0 = already up, 1 = freshly initialised, -1 = failure.
+        // Without working CSPRNG initialisation no crypto call is safe to run.
+        if (sodium_init() < 0) {
+            std::fputs("orca: sodium_init() failed\n", stderr);
+            std::abort();
+        }
+    });
 }
 
 // Fixed key/nonce sizes of the nacl box family.

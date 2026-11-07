@@ -35,12 +35,6 @@ Bytes fromHex(const std::string& text) {
     return out;
 }
 
-Bytes fromB64(const std::string& text) {
-    Bytes out;
-    if (!base64Decode(text, out)) throw std::runtime_error("bad base64 in vectors");
-    return out;
-}
-
 const nlohmann::json& frameCase(const nlohmann::json& vectors, const char* name) {
     return vectors.at("frames").at(name);
 }
@@ -112,8 +106,6 @@ void testSchedule(const nlohmann::json& p1c, const nlohmann::json& p1) {
 }
 
 void testFrames(const nlohmann::json& p1c, const E2eeKeySchedule& schedule) {
-    const auto& frames = p1c.at("frames");
-
     for (const char* name : {"m2dTextCounter0", "m2dTextCounter1", "m2dBinarySparse", "d2mTextCounter0", "d2mTextCounter5"}) {
         const auto& frame = frameCase(p1c, name);
         const auto direction = static_cast<Direction>(frame.at("direction").get<int>());

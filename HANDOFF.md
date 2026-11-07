@@ -112,7 +112,9 @@ Start-Process D:\任意空目录\orca-gateway.exe   # 弹窗「orca 网关管理
 **重要（影响功能真实度）**
 3. 窗口仍是**骨架数据**：`hubConnected=false`、`orcaState=disconnected` 硬编码；P3 server、P4 gateway 后台网络运行时、P2 Orca JSON-RPC 都未实现。
 4. **P1-c 已完成（2026-11-07）**：`box_crypto`（scalarmult/beforenm/secretbox）+ `e2ee_session`（计数器会话）落地，tweetnacl 跨实现向量 `p1c-vectors.json` 逐字节对齐，ctest 8/8（新增 e2ee_session）。scrypt 在原项目 E2EE 路径零使用，已移出范围。剩余：真机 Orca 握手冒烟（P2/P4）。
-5. 静态 Qt 的 **LGPLv3 可重链接义务**仍未确认（发布前必须处理）。
+5. **VPS 上跑着生产 hub（本轮发现）**：包 `orca-web-server 0.1.5`（Bun 版单文件 ~104 MB），unit `orca-web.service` **active**，生产网关 `DESKTOP-5C2U2HV` 会连入；配置 `/etc/orca-web/server.json`（600）。我们的 deb 与它**同名同路径**（`orca-web.service`、`/etc/orca-web/server.json`），dpkg 冲突保护已实测拦截。**在 C++ hub 达到可替换之前，绝不能在生产 VPS 上 dpkg -i / stop 该服务**；完整安装冒烟已改用 dpkg-deb -x/-e 轻量验证，真安装推演留到切换日。
+6. **deb 产物已生成**（2026-11-07，VPS 构建）：`dist/orca-server-0.0.1-linux-amd64.deb`（233.8 KiB）+ `.sha256`；Linux ctest 8/8（GNU 15.2，MSVC 之外的第二编译器验证）；deb ≤ 10 MiB 门禁 OK。
+7. 静态 Qt 的 **LGPLv3 可重链接义务**仍未确认（发布前必须处理）。
 6. 全链路真实联调（用户定的验收标准）尚未开始；`web/` 零构建静态页未实现（P5）。
 
 **建议（清理项）**
@@ -126,6 +128,7 @@ Start-Process D:\任意空目录\orca-gateway.exe   # 弹窗「orca 网关管理
 
 1. **push 三个本地 commit**（用户决定时机；push 后 CI 会第一次实跑静态流水线，盯 ci.yml）。
 2. ~~P1-c~~ **已完成**（box_crypto + e2ee_session + 跨实现向量，ctest 8/8）。
+3. **P3**：hub 真实服务（HTTP-WS-hub）。动手前先对齐原项目 hub 的 TS 实现（`D:\work\orca-web/src/`，只读）；注意生产 VPS 正跑旧版 0.1.5，切换是 P3 完成后的独立动作。
 3. **P3 / P4 / P2**：server HTTP-WS-hub、gateway 后台网络运行时、Orca JSON-RPC；把 `StatusProvider` 从 `LocalStatusProvider` 换成真实状态源。
 4. **P5 / P6**：零构建前端、deb/systemd/Windows 自启、release 产物、全链路联调。
 5. **发布前**：LGPLv3 合规、（可选）ICU 裁剪瘦身、体积门禁再收紧到实测+小余量、产物命名统一。
