@@ -35,6 +35,16 @@ add_test(NAME gateway_core COMMAND orca_gateway_core_tests)
 add_test(NAME protocol COMMAND orca_protocol_tests
     ${CMAKE_SOURCE_DIR}/tests/vectors/p1-vectors.json)
 
+# P1-c: libsodium-backed E2EE v2 sealing, only buildable when sodium is found.
+if(ORCA_HAVE_SODIUM)
+    add_executable(orca_e2ee_session_tests unit/e2ee_session_test.cpp)
+    target_include_directories(orca_e2ee_session_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/unit)
+    target_link_libraries(orca_e2ee_session_tests PRIVATE orca_protocol)
+    add_test(NAME e2ee_session COMMAND orca_e2ee_session_tests
+        ${CMAKE_SOURCE_DIR}/tests/vectors/p1c-vectors.json
+        ${CMAKE_SOURCE_DIR}/tests/vectors/p1-vectors.json)
+endif()
+
 add_test(NAME server_version COMMAND orca-server --version)
 set_tests_properties(server_version PROPERTIES
     PASS_REGULAR_EXPRESSION "orca-server ")

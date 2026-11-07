@@ -19,8 +19,9 @@ namespace orca::protocol {
 //   -> e2ee_auth          (SEALED, carries transcriptHashB64 + deviceToken)
 //   <- e2ee_authenticated(SEALED)
 //
-// Only the JSON BODIES live here. Sealing them needs crypto_secretbox_easy
-// (libsodium, later in P1-b) on top of seal_frame.hpp's byte layout.
+// Only the JSON BODIES live here. Sealing them goes through E2eeSession
+// (e2ee_session.hpp), which wraps crypto_secretbox_easy on top of
+// seal_frame.hpp's byte layout.
 //
 // NOTE: nlohmann::json sorts object keys while JSON.stringify preserves
 // insertion order. That difference is harmless: Orca parses these frames as

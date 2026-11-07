@@ -6,7 +6,7 @@
 
 | 库 | 状态 | 用途 | 体积影响（静态链接估算） |
 |---|---|---|---|
-| `openssl` | 本机仅 `x64-windows`（动态）；交付需 `x64-windows-static` | SHA-256 / HMAC-HKDF / `EVP_PBE_scrypt` / WSS 客户端 TLS | ≈ 2.5 MB |
+| `openssl` | 本机仅 `x64-windows`（动态）；交付需 `x64-windows-static` | SHA-256 / HMAC-HKDF / WSS 客户端 TLS（`EVP_PBE_scrypt` 原项目 E2EE 路径零使用，已移出范围） | ≈ 2.5 MB |
 | `nlohmann-json` | 本机已装（header-only） | wire 帧、配置 JSON | ≈ 0 |
 | `libsodium` | 本机已装 `x64-windows-static`（2026-11-07） | X25519（`crypto_box_beforenm`）、XSalsa20-Poly1305（`crypto_secretbox_easy`）、随机字节。E2EE v2 必需，OpenSSL 没有 XSalsa20 | ≈ 0.4 MB |
 | `boost-beast` (+asio) | 本机已装 `x64-windows-static`（2026-11-07） | HTTP 服务端、WS 服务端、WSS 客户端 | ≈ 1 MB，header-only 为主 |

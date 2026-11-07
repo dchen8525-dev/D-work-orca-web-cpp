@@ -99,6 +99,19 @@ round-trip 且恰好 32 字节；最后用常量时间比较把 host key 钉在 
 `nlohmann::json` 会按 key 排序，而 `JSON.stringify` 保留插入顺序；这里只比较解析后的 JSON 语义，
 因为 Orca 按 JSON 解析这些帧、transcript 也由具名字段构造而非由帧文本构造，键序不进任何哈希。
 
-仍需 libsodium / 静态 OpenSSL 才能完成的部分：`crypto_box_beforenm` 派生 sharedSecret、
-`crypto_secretbox_easy` 封包/解包（直接套用 `seal_frame.hpp` 的几何）、`EVP_PBE_scrypt`，
-以及真实 Orca 握手冒烟。
+### P1-c：libsodium 背书的加密封装（已落地）
+
+`tools/export-p1c-vectors.mjs` 用**原项目的 tweetnacl**（Node 内置 crypto 没有
+XSalsa20-Poly1305，所以第一份向量文件只覆盖了纯 C++ 可测的 header/nonce）生成
+`tests/vectors/p1c-vectors.json`：NaCl 经典 box 测试对（scalarmult / beforenm）、
+canonical secretbox 密文，以及用 p1 向量输入派生出密钥表后封出的 **5 个完整 sealed
+frame**。C++ 侧 `tests/unit/e2ee_session_test.cpp` 逐字节复现，并测会话语义：
+双向独立计数器、replay / 乱序 / 篡改全部拒绝且不动计数器、`2^64-1` 拒绝回绕。
+
+| 模块 | 依据 | 门禁 |
+|---|---|---|
+| `box_crypto.hpp/.cpp` | `crypto_scalarmult` / `crypto_box_beforenm` / `crypto_secretbox_easy`（libsodium） | NaCl 经典向量 + 5 个跨实现 sealed frame 逐字节 |
+| `e2ee_session.hpp/.cpp` | `E2eeV2Client` 的 `seal`/`open` 计数器语义 | replay、乱序、篡改、短帧、方向错位、计数器回绕 |
+
+仍需真实联调的部分：对着真机 Orca 的握手冒烟（P2/P4）。`EVP_PBE_scrypt` 在原项目
+E2EE 路径中**零使用**，从 P1 范围移除；若后续配对流程需要再评估。

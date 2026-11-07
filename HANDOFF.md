@@ -111,7 +111,7 @@ Start-Process D:\任意空目录\orca-gateway.exe   # 弹窗「orca 网关管理
 
 **重要（影响功能真实度）**
 3. 窗口仍是**骨架数据**：`hubConnected=false`、`orcaState=disconnected` 硬编码；P3 server、P4 gateway 后台网络运行时、P2 Orca JSON-RPC 都未实现。
-4. **P1-c**：`crypto_box_beforenm` / secretbox / scrypt 的静态 libsodium + OpenSSL 已就位，E2EE v2 真实加解密 + golden 向量可以开工了（第一轮被静态依赖卡住的事项已解锁）。
+4. **P1-c 已完成（2026-11-07）**：`box_crypto`（scalarmult/beforenm/secretbox）+ `e2ee_session`（计数器会话）落地，tweetnacl 跨实现向量 `p1c-vectors.json` 逐字节对齐，ctest 8/8（新增 e2ee_session）。scrypt 在原项目 E2EE 路径零使用，已移出范围。剩余：真机 Orca 握手冒烟（P2/P4）。
 5. 静态 Qt 的 **LGPLv3 可重链接义务**仍未确认（发布前必须处理）。
 6. 全链路真实联调（用户定的验收标准）尚未开始；`web/` 零构建静态页未实现（P5）。
 
@@ -125,7 +125,7 @@ Start-Process D:\任意空目录\orca-gateway.exe   # 弹窗「orca 网关管理
 ## 6. 建议的下一步（按此顺序）
 
 1. **push 三个本地 commit**（用户决定时机；push 后 CI 会第一次实跑静态流水线，盯 ci.yml）。
-2. **P1-c**：E2EE v2 真实加解密（libsodium 静态已就位）+ golden 向量测试。
+2. ~~P1-c~~ **已完成**（box_crypto + e2ee_session + 跨实现向量，ctest 8/8）。
 3. **P3 / P4 / P2**：server HTTP-WS-hub、gateway 后台网络运行时、Orca JSON-RPC；把 `StatusProvider` 从 `LocalStatusProvider` 换成真实状态源。
 4. **P5 / P6**：零构建前端、deb/systemd/Windows 自启、release 产物、全链路联调。
 5. **发布前**：LGPLv3 合规、（可选）ICU 裁剪瘦身、体积门禁再收紧到实测+小余量、产物命名统一。

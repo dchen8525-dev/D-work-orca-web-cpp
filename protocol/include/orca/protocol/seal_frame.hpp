@@ -16,9 +16,9 @@ namespace orca::protocol {
 //   D:/work/orca-web/src/gateway/orca/e2ee-v2-client.ts
 //
 // This module deliberately does NO cryptography: it only describes bytes, so
-// it can be implemented and byte-tested before libsodium is linked. Sealing
-// (crypto_secretbox_easy) is added on top in the libsodium-backed part of
-// P1-b; the header/nonce contract stays identical.
+// it stays byte-tested without touching libsodium. Sealing (crypto_secretbox_easy)
+// lives in e2ee_session.hpp on top of this layout; the header/nonce contract
+// is shared by both.
 //
 //   frame     = nonce(24) || secretbox(header(42) || plaintext)
 //   header    = sessionId(32) || direction(1) || kind(1) || uint64BE(counter)
