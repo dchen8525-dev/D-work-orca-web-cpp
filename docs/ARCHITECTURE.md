@@ -64,7 +64,7 @@ packaging/  deb / windows / caddy
 3. Windows 上 OpenSSL 默认不加载系统根证书，gateway 的 WSS 需要显式 CA bundle 或注入系统 store。
 4. 无框架前端的状态同步（输入框草稿、`<details>` 展开态、审批局部状态、markdown XSS）是 P5 主要工作量。
 5. 静态 CRT（`/MT`）要求 vcpkg 使用 `x64-windows-static`；混用 `x64-windows`（动态 CRT）会链接冲突。
-   本机目前只有 `x64-windows`（含动态 Qt 6.11.3），静态 triplet 尚未安装。
+   本机目前只有 `x64-windows`（含动态 Qt 6.11.2），静态 triplet 尚未安装。
 6. **Qt 静态构建**：`qtbase` 在 `x64-windows-static` 上从源码编译，首次约 1-2 小时；
    CI/release 依赖 `VCPKG_DEFAULT_BINARY_CACHE` 复用产物。静态链接还需履行 Qt LGPLv3 的
    可重链接义务（提供目标文件或改用商业授权）——发布前必须确认合规路径。

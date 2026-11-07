@@ -8,7 +8,7 @@
 | MSVC | `VC\Tools\MSVC\14.51.36231`，`cl.exe` 19.51.36260.0 |
 | CMake | VS 自带 4.3.1-msvc1，`Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe` |
 | Windows SDK | 10.0.26100.0 |
-| vcpkg | `D:\work\vcpkg`（2026-09-26），`x64-windows` 已装 81 个包（含动态 Qt 6.11.3）；`x64-windows-static` **为空** |
+| vcpkg | `D:\work\vcpkg`（2026-09-26），`x64-windows` 已装 81 个包（含动态 Qt 6.11.2）；`x64-windows-static` **为空** |
 | CMake 生成器 | 不指定 `-G` 时自动选 `Visual Studio 18 2026`（多配置，用 `--config Release`） |
 
 ## 一个必须知道的环境坑
@@ -74,6 +74,22 @@ ORCA_UI_SMOKE=1 ./orca-gateway.exe --config <path>
 ```
 
 `ORCA_UI_SMOKE=1` 会构造完整窗口、跑一次状态刷新后立刻退出事件循环，用于无桌面环境的冒烟。
+
+### 动态 Qt 的运行时部署（windeployqt）
+
+动态 Qt 验证构建的 exe **不能单独拷走运行**：首次启动会以 `0xC0000409` 崩溃，
+日志停在 `starting Qt client`——Qt 只在 exe 旁找 `platforms/qwindows.dll`，
+vcpkg 的插件目录不会自动回退。每次**清理构建目录后**都要重新部署：
+
+```powershell
+$wdq = "D:\work\vcpkg\installed\x64-windows\tools\Qt6\bin\windeployqt.exe"
+& $wdq --release --no-translations --no-system-d3d-compiler --no-opengl-sw `
+       --no-compiler-runtime "D:\work\orca-cpp\build-ui\gateway\Release\orca-gateway.exe"
+```
+
+部署后写入 `platforms/`、`styles/`、`imageformats/`、`tls/`、`networkinformation/`、
+`Qt6Network.dll` 等（整个输出目录约 61 MB）。交付配置（静态 Qt）没有这一步——
+这正是选择静态链接的原因。
 
 ## 常用命令
 

@@ -10,7 +10,7 @@
 | `nlohmann-json` | 本机已装（header-only） | wire 帧、配置 JSON | ≈ 0 |
 | `libsodium` | **本机未装成功** | X25519（`crypto_box_beforenm`）、XSalsa20-Poly1305（`crypto_secretbox_easy`）、随机字节。E2EE v2 必需，OpenSSL 没有 XSalsa20 | ≈ 0.4 MB |
 | `boost-beast` (+asio) | **本机未装成功** | HTTP 服务端、WS 服务端、WSS 客户端 | ≈ 1 MB，header-only 为主 |
-| `qtbase`（Qt6 Widgets） | 本机已装 **动态** `x64-windows`（6.11.3）；交付需**静态** `x64-windows-static`，**尚未构建** | gateway 的 Qt Widgets 配置窗口（替代原 loopback HTML 管理页） | ≈ 12–20 MB（含 Core/Gui/Widgets + 静态平台插件） |
+| `qtbase`（Qt6 Widgets） | 本机已装 **动态** `x64-windows`（6.11.2）；交付需**静态** `x64-windows-static`，**尚未构建** | gateway 的 Qt Widgets 配置窗口（替代原 loopback HTML 管理页） | ≈ 12–20 MB（含 Core/Gui/Widgets + 静态平台插件） |
 | 仍不引入 | — | `qtdeclarative`（QML）、独立 ICU、zlib permessage-deflate | 与 Qt Widgets 选型无关，且会进一步增大体积 |
 
 Qt 的动态集合实测（本机 `x64-windows`）：`Qt6Core 5.1M + Qt6Gui 6.7M + Qt6Widgets 5.9M ≈ 17.7 MB`，
@@ -60,7 +60,7 @@ Qt 也必须是静态构建：动态 Qt 会强制 `/MD` 并要求随包携带 DL
 与「单文件 Portable」冲突。静态 Qt 不能自动发现平台插件，`main.cpp` 用
 `Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)`、CMake 链接 `Qt6::QWindowsIntegrationPlugin`。
 
-本机 `x64-windows-static` **当前一个包都没装**（只有 `x64-windows` 的 81 个包，含动态 Qt 6.11.3）。
+本机 `x64-windows-static` **当前一个包都没装**（只有 `x64-windows` 的 81 个包，含动态 Qt 6.11.2）。
 所以：
 
 - 交付配置（`/MT` + 静态 Qt）**尚未在本机编译验证**，只能由装好依赖后的 CI 首次构建确认；

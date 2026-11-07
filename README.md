@@ -54,7 +54,7 @@ bash scripts/build.sh
 
 P1 起 `nlohmann-json`（header-only）是编译必需，Windows 构建必须带 vcpkg toolchain；
 `-NoToolchain` 从 P1 起不可用。**交付配置**是 `x64-windows-static` + `/MT` + 静态 Qt；
-`x64-windows-static` 当前尚未在本机安装（本机只有 `x64-windows` 的动态 Qt 6.11.3），
+`x64-windows-static` 当前尚未在本机安装（本机只有 `x64-windows` 的动态 Qt 6.11.2），
 因此静态配置**尚未在本机编译验证**。
 
 在静态 Qt 装好之前，可用本机已有的动态 Qt 验证 UI 代码：
