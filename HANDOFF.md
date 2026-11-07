@@ -110,11 +110,12 @@ Start-Process D:\任意空目录\orca-gateway.exe   # 弹窗「orca 网关管理
 2. CI/release workflow 的静态 Qt 流水线**仍未实跑**（本机首跑已通过，CI 侧理论风险大幅降低，但没验证过；release.yml 的产物名/门禁与本地一致，首次 release 前要盯一次）。
 
 **重要（影响功能真实度）**
-3. 窗口仍是**骨架数据**：`hubConnected=false`、`orcaState=disconnected` 硬编码；P3 server、P4 gateway 后台网络运行时、P2 Orca JSON-RPC 都未实现。
-4. **P1-c 已完成（2026-11-07）**：`box_crypto`（scalarmult/beforenm/secretbox）+ `e2ee_session`（计数器会话）落地，tweetnacl 跨实现向量 `p1c-vectors.json` 逐字节对齐，ctest 8/8（新增 e2ee_session）。scrypt 在原项目 E2EE 路径零使用，已移出范围。剩余：真机 Orca 握手冒烟（P2/P4）。
-5. **VPS 上跑着生产 hub（本轮发现）**：包 `orca-web-server 0.1.5`（Bun 版单文件 ~104 MB），unit `orca-web.service` **active**，生产网关 `DESKTOP-5C2U2HV` 会连入；配置 `/etc/orca-web/server.json`（600）。我们的 deb 与它**同名同路径**（`orca-web.service`、`/etc/orca-web/server.json`），dpkg 冲突保护已实测拦截。**在 C++ hub 达到可替换之前，绝不能在生产 VPS 上 dpkg -i / stop 该服务**；完整安装冒烟已改用 dpkg-deb -x/-e 轻量验证，真安装推演留到切换日。
-6. **deb 产物已生成**（2026-11-07，VPS 构建）：`dist/orca-server-0.0.1-linux-amd64.deb`（233.8 KiB）+ `.sha256`；Linux ctest 8/8（GNU 15.2，MSVC 之外的第二编译器验证）；deb ≤ 10 MiB 门禁 OK。
-7. 静态 Qt 的 **LGPLv3 可重链接义务**仍未确认（发布前必须处理）。
+3. 窗口仍是**骨架数据**：`hubConnected=false`、`orcaState=disconnected` 硬编码；**P3-a hub 已落地**（见 PROTOCOL.md），但 gateway 侧的后台网络运行时（P4）与真机 Orca 对接（P2）仍未实现——把窗口的 `LocalStatusProvider` 换成真实状态源是 P4 的一部分。
+4. **P1-c 已完成（2026-11-07）**：`box_crypto` + `e2ee_session`，tweetnacl 跨实现向量逐字节对齐。
+5. **P3-a 已完成（2026-11-07）**：hub 真实服务（boost-beast 单线程）——HTTP API 五件套、WS /gateway + /client 双端、scrypt 登录（Node 向量互通）、会话存储、`--init-config`、IP 限速、CSP/静态文件；Node WS 端到端冒烟 9/9，ctest 11/11。**注意：`orcaserver` 体积涨到 5.9 MiB（beast），8 MiB 门禁仍 OK；`deb ≤ 10 MiB` 重新打包时需复测**。
+6. **VPS 上跑着生产 hub**：包 `orca-web-server 0.1.5`（Bun 版），unit `orca-web.service` active，生产网关会连入。C++ deb 与它同名同路径，**切换日之前禁止在生产 VPS dpkg -i / stop**；P3-a 的 C++ hub 尚未经真实 gateway 客户端联调（P4 之后的切换演练才做）。
+7. **deb 产物**（2026-11-07）：`dist/orca-server-0.0.1-linux-amd64.deb` 是 **P0 骨架版**；P3-a 代码落地后需在 VPS 重新构建（git archive → build-deb.sh，流程已验证）。
+8. 静态 Qt 的 **LGPLv3 可重链接义务**仍未确认（发布前必须处理）。
 6. 全链路真实联调（用户定的验收标准）尚未开始；`web/` 零构建静态页未实现（P5）。
 
 **建议（清理项）**

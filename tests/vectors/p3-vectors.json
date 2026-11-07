@@ -1,0 +1,20 @@
+{
+  "note": "scrypt password-hash vectors from Node crypto.scryptSync, matching apps/server/src/passwords.ts (scrypt$N$r$p$salt$hash). Generated once; the build never needs Node.",
+  "cases": [
+    {
+      "password": "correct horse battery staple",
+      "saltHex": "000102030405060708090a0b0c0d0e0f",
+      "encoded": "scrypt$16384$8$1$AAECAwQFBgcICQoLDA0ODw==$11kKyiyYAc8G7rp3KmncMc44YlkdllIqxOa7pq0fMaU="
+    },
+    {
+      "password": "Tr0ub4dor&3",
+      "saltHex": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "encoded": "scrypt$16384$8$1$8PHy8/T19vf4+fr7/P3+/w==$1r0VqRWUjWpzfjHj0NZhd2NJCnr9GJq0vJtL9CN4lJo="
+    },
+    {
+      "password": "",
+      "saltHex": "aabbccddeeff00112233445566778899",
+      "encoded": "scrypt$16384$8$1$qrvM3e7/ABEiM0RVZneImQ==$rFcAKICQKJf8x+AOqb2KG4Zqp0U+3PlcUP+qSo3e8kA="
+    }
+  ]
+}

@@ -23,6 +23,14 @@ target_include_directories(orca_common PUBLIC
 target_include_directories(orca_common PRIVATE
     ${CMAKE_SOURCE_DIR}/protocol/include)
 
+# scrypt password hashing (P3 login) needs OpenSSL's EVP_PBE_scrypt; the pure
+# C++ crypto slices above must keep building without it.
+if(ORCA_HAVE_OPENSSL)
+    target_sources(orca_common PRIVATE src/crypto/scrypt.cpp)
+    target_link_libraries(orca_common PUBLIC OpenSSL::Crypto)
+    target_compile_definitions(orca_common PUBLIC ORCA_HAVE_OPENSSL=1)
+endif()
+
 if(WIN32)
     target_link_libraries(orca_common PUBLIC shell32)
 endif()

@@ -113,5 +113,28 @@ frame**。C++ 侧 `tests/unit/e2ee_session_test.cpp` 逐字节复现，并测会
 | `box_crypto.hpp/.cpp` | `crypto_scalarmult` / `crypto_box_beforenm` / `crypto_secretbox_easy`（libsodium） | NaCl 经典向量 + 5 个跨实现 sealed frame 逐字节 |
 | `e2ee_session.hpp/.cpp` | `E2eeV2Client` 的 `seal`/`open` 计数器语义 | replay、乱序、篡改、短帧、方向错位、计数器回绕 |
 
-仍需真实联调的部分：对着真机 Orca 的握手冒烟（P2/P4）。`EVP_PBE_scrypt` 在原项目
-E2EE 路径中**零使用**，从 P1 范围移除；若后续配对流程需要再评估。
+仍需真实联调的部分：对着真机 Orca 的握手冒烟（P2/P4）。
+
+`EVP_PBE_scrypt` 在 E2EE 路径中零使用，但**P3 的登录密码哈希用它**（原项目
+`apps/server/src/passwords.ts`：`scrypt$N$r$p$salt$hash`，N=16384/R=8/P=1/32 字节，
+常时比较）——P3 的 `passwords` 模块必须与该格式互通。
+
+## P3-a：hub 真实服务（已落地）
+
+`server/` 从 P0 CLI 骨架升级为真实 hub（boost-beast/asio 单线程，对齐原项目
+`apps/server/src/` 的全部 1450 行 TS）：
+
+| 模块 | 对齐源 | 说明 |
+|---|---|---|
+| `server_config` | `config.ts` | 文件 + `ORCA_WEB_*` 环境变量，字段与默认值逐一对应 |
+| `crypto::scrypt`（common） | `passwords.ts` | Node `scryptSync` 金标准向量（`tests/vectors/p3-vectors.json`），旧 Bun 版哈希可直接验证 |
+| `session_store` | `sessions.ts` | token 只存 SHA-256、滚动 TTL、原子写盘、损坏文件静默 |
+| `hub_core`（纯逻辑） | `hub.ts` | hello 密钥常时验证、id 映射、订阅表、**重连重放 + stream-reset**、pending 立即失败、orca-state 广播；全部动作驱动、可单测 |
+| `server_runner` + `http_app` | `main.ts`/`http-app.ts` | `/gateway`、`/client`（Origin+会话双检）、login/logout/session/password、IP 限速（15min/10 次）、静态文件（防穿越 + CSP）、`--init-config`（密码只显示一次）、SIGINT/SIGTERM 优雅关闭（1001 关闭 + 3s 强退） |
+
+冒烟（本机实测）：HTTP 全周期 ×10 轮（health/login-401/login-200/session/logout），
+Node 原生 WebSocket 真连 **9/9**（hello 鉴权、welcome+orca、请求 id 重映射回程、
+订阅/流帧回程、重连 stream-reset+gateway-state+旧连接 4009）。ctest **11/11**。
+
+P3 未包含（后续）：与真机 Orca 的 E2EE 联调（P2/P4）、`/api/*` 之外任务面 API 的
+真实数据（hub 只转发，不产生）、web/ 静态页（P5）、VPS 切换演练。

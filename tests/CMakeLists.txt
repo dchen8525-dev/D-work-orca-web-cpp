@@ -45,6 +45,38 @@ if(ORCA_HAVE_SODIUM)
         ${CMAKE_SOURCE_DIR}/tests/vectors/p1-vectors.json)
 endif()
 
+# P3: hub-side logic. The scrypt gate needs OpenSSL (same requirement as the
+# server target); the other two are dependency-free.
+if(ORCA_HAVE_OPENSSL)
+    add_executable(orca_server_passwords_tests unit/server_passwords_test.cpp)
+    target_include_directories(orca_server_passwords_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/unit)
+    target_link_libraries(orca_server_passwords_tests PRIVATE orca_common)
+    add_test(NAME server_passwords COMMAND orca_server_passwords_tests
+        ${CMAKE_SOURCE_DIR}/tests/vectors/p3-vectors.json)
+endif()
+
+# The hub's routing core and session store are plain C++, so they stay under
+# test even though they ship inside the orca-server target.
+add_executable(orca_server_hub_core_tests
+    unit/server_hub_core_test.cpp
+    ${CMAKE_SOURCE_DIR}/server/src/hub_core.cpp)
+target_include_directories(orca_server_hub_core_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/unit
+    ${CMAKE_SOURCE_DIR}/server/include)
+target_link_libraries(orca_server_hub_core_tests PRIVATE
+    orca_common orca_protocol nlohmann_json::nlohmann_json)
+add_test(NAME server_hub_core COMMAND orca_server_hub_core_tests)
+
+add_executable(orca_server_session_store_tests
+    unit/server_session_store_test.cpp
+    ${CMAKE_SOURCE_DIR}/server/src/session_store.cpp)
+target_include_directories(orca_server_session_store_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/unit
+    ${CMAKE_SOURCE_DIR}/server/include)
+target_link_libraries(orca_server_session_store_tests PRIVATE
+    orca_common nlohmann_json::nlohmann_json)
+add_test(NAME server_session_store COMMAND orca_server_session_store_tests)
+
 add_test(NAME server_version COMMAND orca-server --version)
 set_tests_properties(server_version PROPERTIES
     PASS_REGULAR_EXPRESSION "orca-server ")
