@@ -8,7 +8,7 @@
 | MSVC | `VC\Tools\MSVC\14.51.36231`，`cl.exe` 19.51.36260.0 |
 | CMake | VS 自带 4.3.1-msvc1，`Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe` |
 | Windows SDK | 10.0.26100.0 |
-| vcpkg | `D:\work\vcpkg`（2026-09-26），已装 77 个包，只有 `x64-windows` triplet |
+| vcpkg | `D:\work\vcpkg`（2026-09-26），`x64-windows` 已装 81 个包（含动态 Qt 6.11.3）；`x64-windows-static` **为空** |
 | CMake 生成器 | 不指定 `-G` 时自动选 `Visual Studio 18 2026`（多配置，用 `--config Release`） |
 
 ## 一个必须知道的环境坑
@@ -43,23 +43,45 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 | 平台 | 安装方式 |
 |---|---|
-| Windows | `scripts/setup-deps.ps1`（vcpkg，`x64-windows-static`） |
-| Linux / CI | `scripts/setup-deps.sh`（apt） |
+| Windows（交付） | `scripts/setup-deps.ps1`（vcpkg `x64-windows-static`：`openssl nlohmann-json libsodium boost-beast qtbase`） |
+| Windows（仅验证 UI） | 用本机已有的 `x64-windows` 动态 Qt，`-DynamicQt` 切换 `/MD` |
+| Linux / CI | `scripts/setup-deps.sh`（apt，**不装 Qt**） |
 
 `ORCA_REQUIRE_NETWORK_DEPS=OFF`（P0 默认）时，缺失的网络依赖只在 configure 阶段报告，不影响编译；
-P1-c 起设为 `ON`，缺依赖直接 configure 失败，避免带着残缺依赖进入打包。
-（P1-a / P1-b 的免依赖切片用当前的 `x64-windows` + header-only `nlohmann-json` 即可编译验证。）
+P1-c 起设为 `ON`。`ORCA_REQUIRE_QT` 同理：CI/release 设为 `ON`，缺 Qt6 Widgets 直接 configure 失败，
+保证 CLI 骨架不会被当成客户端打包。
 
 **从 P1 起 `nlohmann-json` 是编译必需**（wire 帧与 canonical JSON 用它，header-only）。
 它已在 vcpkg 里装好，Linux 由 `nlohmann-json3-dev` 提供；因此构建必须带 vcpkg toolchain
 （或 Linux 系统包），`-NoToolchain` 只适用于已经过去的 P0 骨架。
 
+### Qt 的两种配置
+
+| 开关 | CRT | Qt | 用途 |
+|---|---|---|---|
+| 默认 `ORCA_QT_STATIC=ON` | `/MT` | 静态 `x64-windows-static` | **交付**：单文件 exe，无 DLL |
+| `-DORCA_QT_STATIC=OFF` | `/MD` | 动态 `x64-windows` | 本机验证 UI；输出目录会带 17 个 DLL（约 58 MB） |
+
+静态 Qt 首次从源码编译约 1-2 小时，CI 用 `VCPKG_DEFAULT_BINARY_CACHE` 缓存。
+静态构建还必须在 `main.cpp` 导入 `QWindowsIntegrationPlugin`（已实现，但**尚未经静态编译验证**）。
+
+本机验证动态 Qt 时需给 offscreen smoke 指定插件路径：
+
+```bash
+QT_QPA_PLATFORM=offscreen \
+QT_QPA_PLATFORM_PLUGIN_PATH="D:/work/vcpkg/installed/x64-windows/Qt6/plugins/platforms" \
+ORCA_UI_SMOKE=1 ./orca-gateway.exe --config <path>
+```
+
+`ORCA_UI_SMOKE=1` 会构造完整窗口、跑一次状态刷新后立刻退出事件循环，用于无桌面环境的冒烟。
+
 ## 常用命令
 
 ```powershell
-.\scripts\build.ps1                                                    # 默认带 vcpkg toolchain
-.\scripts\build.ps1 -Triplet x64-windows-static -RequireNetworkDeps    # P1-c+ 完整构建
-# 注意：-NoToolchain 从 P1 起会因找不到 nlohmann-json 而 configure 失败
+.\scripts\setup-deps.ps1                                             # 首次含静态 Qt，约 1-2 小时
+.\scripts\build.ps1 -RequireNetworkDeps -RequireQt                    # 交付配置（x64-windows-static）
+# setup-deps.ps1 -SkipQt 可只装网络依赖，先跳过耗时的静态 Qt 编译
+.\scripts\build.ps1 -Triplet x64-windows -DynamicQt -RequireQt       # 本机 UI 验证（非发布配置）
 ```
 
 ```bash
@@ -82,17 +104,24 @@ cmake -S . -B build -U ORCA_BUILD_VERSION
 
 ## 体积门禁
 
-`cmake/SizeReport.cmake` 在两个可执行目标的 POST_BUILD 自动运行，默认上限 8 MiB：
+`cmake/SizeReport.cmake` 在两个可执行目标的 POST_BUILD 自动运行：
+
+| 目标 | 上限 |
+|---|---|
+| `orca-server` / 无 Qt 的 CLI 骨架 | 8 MiB |
+| `orca-gateway` 链接**静态 Qt** 时 | 24 MiB（估算，首次静态构建后按实测收紧） |
+| `orca-gateway` 动态 Qt 验证构建 | 8 MiB（DLL 体积不计入 exe 本体） |
+| deb | 10 MiB（P6 打包步骤用同一脚本） |
 
 ```
 -- [orca-size] size: 251392 bytes (245.50 KiB) / budget: 8388608 bytes / verdict: OK
 ```
 
-deb 的 10 MiB 门禁在 P6 的打包步骤里用同一脚本校验。P0 实测：
-`orca-gateway.exe` 251,392 B、`orca-server.exe` 246,272 B。
+本机实测：CLI 骨架 `orca-gateway.exe` 251,392 B、`orca-server.exe` 246,272 B；
+动态 Qt 验证构建的 gateway exe 为 240,128 B（旁边 17 个 DLL 约 58 MB，正是不发布动态配置的原因）。
 
 ## 编译器策略
 
 Release 以**体积**为优先：MSVC `/O1` + `/OPT:REF /OPT:ICF` + LTCG；GCC `-Os` +
 `-ffunction-sections -fdata-sections` + `--gc-sections`；静态链接 CRT（`/MT`）与 libstdc++/libgcc。
-不引入 Qt、ICU 等重库。
+不引入 QML / 独立 ICU 等额外重量级组件；Qt 仅用 `qtbase` 的 Widgets 部分。

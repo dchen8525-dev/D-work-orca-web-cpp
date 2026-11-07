@@ -1,12 +1,27 @@
 # Dependency resolution for both hosts:
-#   Windows -> vcpkg (x64-windows-static for P1+; see docs/DEPENDENCIES.md)
-#   Linux   -> distribution packages via apt (see .github/workflows/ci.yml)
+#   Windows -> vcpkg (x64-windows-static for the delivered static-Qt gateway)
+#   Linux   -> distribution packages via apt (no Qt; server has no GUI)
 #
 # P0 targets link only the C++ standard library, so missing network libraries
 # are reported, not fatal. P1+ sets ORCA_REQUIRE_NETWORK_DEPS=ON.
+# Qt6 Widgets is Windows-only and only needed by ORCA_BUILD_GATEWAY_UI; set
+# ORCA_REQUIRE_QT=ON in CI/release so a missing Qt never slips into packaging.
 
 find_package(OpenSSL QUIET)
 find_package(nlohmann_json CONFIG QUIET)
+
+set(ORCA_HAVE_QT OFF)
+if(ORCA_BUILD_GATEWAY_UI AND WIN32)
+    find_package(Qt6 QUIET COMPONENTS Widgets)
+    if(Qt6_FOUND AND TARGET Qt6::Widgets)
+        set(ORCA_HAVE_QT ON)
+    endif()
+endif()
+if(NOT WIN32)
+    # The VPS hub is headless; the Qt option is silently ignored on Linux so a
+    # Linux build of the whole tree never tries to find a GUI toolkit.
+    set(ORCA_HAVE_QT OFF)
+endif()
 
 # Boost.Beast is header-only; checking the header avoids CMake 4.x's removed
 # FindBoost module (CMP0167) and works identically for vcpkg and apt installs.
@@ -70,6 +85,7 @@ function(orca_report_dependencies)
     message(STATUS "  nlohmann-json    : ${ORCA_HAVE_JSON}")
     message(STATUS "  Boost (Beast)    : ${ORCA_HAVE_BOOST}")
     message(STATUS "  libsodium        : ${ORCA_HAVE_SODIUM}")
+    message(STATUS "  Qt6 Widgets      : ${ORCA_HAVE_QT} (static=${ORCA_QT_STATIC}, require=${ORCA_REQUIRE_QT})")
     message(STATUS "  require network  : ${ORCA_REQUIRE_NETWORK_DEPS}")
     message(STATUS "-------------------------------------------")
     if(ORCA_REQUIRE_NETWORK_DEPS)
@@ -77,6 +93,14 @@ function(orca_report_dependencies)
             message(FATAL_ERROR
                 "ORCA_REQUIRE_NETWORK_DEPS=ON but a network dependency is missing. "
                 "Run scripts/setup-deps.ps1 (Windows) or scripts/setup-deps.sh (Linux).")
+        endif()
+    endif()
+    if(ORCA_REQUIRE_QT AND ORCA_BUILD_GATEWAY_UI AND WIN32)
+        if(NOT ORCA_HAVE_QT)
+            message(FATAL_ERROR
+                "ORCA_REQUIRE_QT=ON but Qt6 Widgets was not found. "
+                "Run scripts/setup-deps.ps1 (x64-windows-static) to build static Qt, "
+                "or pass -DORCA_QT_STATIC=OFF to verify against a dynamic Qt install.")
         endif()
     endif()
 endfunction()

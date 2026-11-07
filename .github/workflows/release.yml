@@ -1,10 +1,15 @@
 name: Release
 
-# On a release tag (v0.0.1 or 0.0.1) build both native binaries, verify their
-# size, checksum them and upload them as workflow artifacts. P6 adds the deb
-# payload, systemd unit, static web pages and Caddy bootstrap.
+# On a release tag (v0.0.2 or 0.0.2) build the portable gateway exe and the
+# Linux server binary, verify their size, checksum them and upload them as
+# workflow artifacts.
+#
+# The gateway is ONE self-contained file: orca-gateway-<tag>-windows-amd64.exe
+# (static Qt + static CRT, no DLLs, no installer, no self-update). The version
+# is part of the file name so releases never overwrite each other.
 # The GitHub Release page itself is created with `gh release create`, so a
 # workflow failure cannot silently skip the tag's release notes.
+# P6 still adds the deb payload, systemd unit, static web pages and Caddy.
 on:
   push:
     tags: ['v*', '[0-9]*']
@@ -17,11 +22,23 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install vcpkg dependencies (static CRT)
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/bincache
+          key: vcpkg-${{ runner.os }}-static-qt-${{ hashFiles('scripts/setup-deps.ps1', 'cmake/Dependencies.cmake') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-static-qt-
+      - name: Install vcpkg dependencies (static CRT + static Qt)
+        env:
+          VCPKG_DEFAULT_BINARY_CACHE: C:/vcpkg/bincache
         shell: pwsh
         run: |
+          if (-not (Test-Path $env:VCPKG_DEFAULT_BINARY_CACHE)) {
+            New-Item -ItemType Directory -Path $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+          }
           vcpkg install --triplet x64-windows-static `
-            openssl nlohmann-json libsodium boost-beast
+            openssl nlohmann-json libsodium boost-beast qtbase
       - name: Configure
         shell: pwsh
         run: |
@@ -31,7 +48,8 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DVCPKG_MANIFEST_MODE=OFF `
-            -DORCA_REQUIRE_NETWORK_DEPS=ON
+            -DORCA_REQUIRE_NETWORK_DEPS=ON `
+            -DORCA_REQUIRE_QT=ON
       - name: Build
         run: cmake --build build --config Release
       - name: Test
@@ -39,20 +57,22 @@ jobs:
       - name: Stage + checksum
         shell: pwsh
         run: |
-          Copy-Item build/gateway/Release/orca-gateway.exe orca-gateway-windows-x64.exe
+          $version = "${{ github.ref_name }}"
+          $stagedName = "orca-gateway-$version-windows-amd64.exe"
+          Copy-Item build/gateway/Release/orca-gateway.exe $stagedName
           # Pass -D as a single quoted argument with an absolute path: an
           # unquoted relative *.exe value reached the script truncated in the
           # first CI run ("file not found: .../orca-gateway").
-          $staged = Join-Path $env:GITHUB_WORKSPACE 'orca-gateway-windows-x64.exe'
-          cmake "-DORCA_TARGET_FILE=$staged" "-DORCA_MAX_BYTES=8388608" -P cmake/SizeReport.cmake
+          $staged = Join-Path $env:GITHUB_WORKSPACE $stagedName
+          cmake "-DORCA_TARGET_FILE=$staged" "-DORCA_MAX_BYTES=25165824" -P cmake/SizeReport.cmake
           (Get-FileHash $staged -Algorithm SHA256).Hash.ToLower() |
-            Out-File -Encoding ascii orca-gateway-windows-x64.exe.sha256
+            Out-File -Encoding ascii "$stagedName.sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-exe
           path: |
-            orca-gateway-windows-x64.exe
-            orca-gateway-windows-x64.exe.sha256
+            orca-gateway-*-windows-amd64.exe
+            orca-gateway-*-windows-amd64.exe.sha256
 
   linux-server:
     runs-on: ubuntu-latest

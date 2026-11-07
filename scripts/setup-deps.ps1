@@ -1,4 +1,4 @@
-# Install the P1+ dependencies into the local vcpkg tree.
+# Install the delivered (static) dependency set into the local vcpkg tree.
 # English only: Windows PowerShell 5.1 reads BOM-less scripts as ANSI.
 #
 # Run this in a NORMAL PowerShell window (outside the agent sandbox).
@@ -8,12 +8,19 @@
 #   - vcpkg's Ninja child processes need the Windows SDK rc.exe on PATH;
 #     the script locates and injects it below.
 #
-# x64-windows-static is required: the project links the static CRT (/MT) so
-# the release exe is a single file with no VC++ redist and no OpenSSL DLLs.
+# x64-windows-static is required: the gateway links static Qt + static CRT
+# (/MT), so the released orca-gateway-<version>-windows-amd64.exe is one file
+# with no VC++ redist, no Qt DLLs and no platform plugin directory.
+#
+# NOTE: qtbase on x64-windows-static is compiled FROM SOURCE. The first run can
+# take 1-2 hours and several GB of disk. vcpkg caches the built packages, so
+# subsequent runs are fast. Use -SkipQt to install only the network libraries
+# while waiting for a full build.
 
 param(
     [string]$VcpkgRoot = "D:\work\vcpkg",
-    [string]$Triplet = "x64-windows-static"
+    [string]$Triplet = "x64-windows-static",
+    [switch]$SkipQt
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,9 +43,14 @@ if (Test-Path $sdkRoot) {
     }
 }
 
-& $vcpkg install --triplet $Triplet `
-    openssl nlohmann-json libsodium boost-beast
+$packages = @("openssl", "nlohmann-json", "libsodium", "boost-beast")
+if (-not $SkipQt) {
+    $packages += "qtbase"
+    Write-Host "[orca] building static Qt from source; this can take 1-2 hours..."
+}
+
+& $vcpkg install --triplet $Triplet @packages
 if ($LASTEXITCODE -ne 0) { throw "vcpkg install failed" }
 
 Write-Host "[orca] dependencies installed for $Triplet"
-Write-Host "[orca] build with: .\scripts\build.ps1 -Triplet $Triplet -RequireNetworkDeps"
+Write-Host "[orca] build with: .\scripts\build.ps1 -Triplet $Triplet -RequireNetworkDeps -RequireQt"

@@ -3,7 +3,9 @@
 # Usage:
 #   cmake -DORCA_TARGET_FILE=<path> [-DORCA_MAX_BYTES=<n>] -P cmake/SizeReport.cmake
 #
-# Defaults: exe 8 MiB, deb 10 MiB (see docs/NAMING.md).
+# Defaults: 8 MiB for the headless server / CLI skeleton. The static-Qt
+# gateway passes 24 MiB explicitly from gateway/CMakeLists.txt; the deb uses
+# 10 MiB in the P6 packaging step. See docs/NAMING.md and docs/BUILD.md.
 
 if(NOT DEFINED ORCA_TARGET_FILE)
     message(FATAL_ERROR "[orca-size] ORCA_TARGET_FILE is required")

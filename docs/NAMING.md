@@ -13,14 +13,17 @@
 
 平台由构建目录区分，不写进文件名，避免出现 `orca-gateway-x64-release.exe` 这类不一致命名。
 
-## Release 产物（GitHub Release，沿用旧项目文件名以兼容 bootstrap 脚本）
+## Release 产物
 
 | 文件 | 用途 |
 |---|---|
-| `orca-gateway-windows-x64.exe` | Windows gateway 单文件 |
+| `orca-gateway-<版本>-windows-amd64.exe` | Windows gateway **单文件 Portable 客户端**（静态 Qt + `/MT`，免安装、无 DLL、无 zip） |
 | `orca-server-linux-amd64.deb` | VPS 的 deb（P6） |
-| `orca-web-release.tar.gz` | 手动兜底（P6） |
 | 以上各文件的 `.sha256` | 校验 |
+
+`<版本>` 取 GitHub tag 名（`github.ref_name`），例如 `orca-gateway-0.0.2-windows-amd64.exe`。
+每次发布文件名都带版本号，因此不同版本不会互相覆盖，也不再做自更新。
+`amd64` 与 Linux 侧 `orca-server-linux-amd64.deb` 保持一致。
 
 ## 安装路径
 
@@ -33,7 +36,7 @@
 | 日志 | `journalctl -u orca-web.service` | `%APPDATA%\orca-web\gateway.log` |
 | systemd unit | `/lib/systemd/system/orca-web.service` | — |
 | 自启 | — | Startup 里的 `orca-web-gateway.vbs` + `gateway-loop.cmd`（P6） |
-| 管理页 | — | `http://127.0.0.1:8790` |
+| 客户端界面 | — | 同进程 Qt Widgets 窗口（不监听端口、无 URL） |
 
 ## 程序标识
 
@@ -42,11 +45,16 @@
 | 版本注入 | CMake `-DORCA_BUILD_VERSION=<tag>`，默认 `0.0.1-dev`；tag `0.0.1` 注入 `0.0.1` |
 | 版本命令 | 两个进程均支持 `--version` / `--help` |
 | hub 监听 | `127.0.0.1:8788`（Caddy 反代） |
-| 管理页端口 | `8790`（`ORCA_WEB_ADMIN_PORT` 可覆盖，P4） |
 | 会话 cookie | `orca_web_session`（P3） |
+| gateway 自检 | `--version` / `--help`（console 子系统，可管道化） |
 
-## 为什么 release 名沿用旧的
+## 为什么不再沿用旧文件名
 
-`bootstrap-server.sh` / `bootstrap-gateway.ps1` 与 gateway 自更新逻辑按
-`orca-gateway-windows-x64.exe` 这个固定 URL 下载。一次性全量替换虽然不要求新旧二进制互操作，
-但沿用文件名可以让部署脚本与自更新链路零改动；P6 若改名，必须同步改这三处。
+旧项目用固定 URL `orca-gateway-windows-x64.exe` 是为了让 `bootstrap-gateway.ps1` 与
+gateway 自更新逻辑零改动。现在**自更新已移除**、gateway 改成免安装的 Portable 单 exe，
+发布物按 tag 带版本号，用户每次手动下载替换即可。因此 P6 的 Windows 自启脚本必须按
+新命名生成快捷方式/启动项，不能再硬编码旧 URL；`bootstrap-gateway.ps1` 里
+`Start-Process` 打开 HTML 管理页的步骤也应删除（改由 exe 自己弹窗）。
+
+改动命名必须同时改本文件、`.github/workflows/release.yml`、`scripts/build.ps1` 与
+`common/src/platform/paths.cpp`，避免出现不一致命名。

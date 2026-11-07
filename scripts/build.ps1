@@ -8,11 +8,13 @@
 
 param(
     [string]$BuildType = "Release",
-    [string]$Triplet = "x64-windows",
+    [string]$Triplet = "x64-windows-static",
     [string]$VcpkgRoot = "D:\work\vcpkg",
     [string]$Version = "0.0.1-dev",
     [switch]$NoToolchain,
-    [switch]$RequireNetworkDeps
+    [switch]$RequireNetworkDeps,
+    [switch]$RequireQt,
+    [switch]$DynamicQt
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,6 +43,9 @@ if (-not $NoToolchain) {
     $configureArgs += "-DVCPKG_MANIFEST_MODE=OFF"
 }
 if ($RequireNetworkDeps) { $configureArgs += "-DORCA_REQUIRE_NETWORK_DEPS=ON" }
+if ($RequireQt) { $configureArgs += "-DORCA_REQUIRE_QT=ON" }
+# Local UI verification against a dynamic vcpkg Qt install; NOT a release config.
+if ($DynamicQt) { $configureArgs += "-DORCA_QT_STATIC=OFF" }
 
 Write-Host "[orca] configure"
 & $cmake @configureArgs

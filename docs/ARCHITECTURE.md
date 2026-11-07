@@ -6,9 +6,10 @@
 |---|---|---|---|
 | `web/`（静态页） | 手机浏览器 | 登录、看板、任务详情、审批/提问、新建、中止 | 会话 cookie |
 | `orca-server` | VPS | HTTP 登录、静态页、`/client` 与 `/gateway` 两个 WebSocket、id 重映射与流广播 | 密码 hash、gateway key |
-| `orca-gateway` | 家里 Windows，与桌面 Orca 同机 | 主动外连 hub、一条 loopback 连到 Orca、E2EE v2、本机管理页、自更新 | gateway key、Orca device token |
+| `orca-gateway` | 家里 Windows，与桌面 Orca 同机 | 主动外连 hub、一条 loopback 连到 Orca、E2EE v2、**Qt Widgets 配置窗口**（同进程） | gateway key、Orca device token |
 
 TLS 由 VPS 前的 Caddy 终止；server 本身只听 `127.0.0.1`。gateway 侧需要真正的 WSS 客户端（OpenSSL）。
+gateway 不再监听 `127.0.0.1:8790`：配置、配对、状态全部在 Qt 窗口内完成，本地 HTTP 攻击面归零。
 
 ## 模块
 
@@ -16,7 +17,7 @@ TLS 由 VPS 前的 Caddy 终止；server 本身只听 `127.0.0.1`。gateway 侧�
 protocol/   24 字段 transcript、canonical JSON、wire 帧、17 项能力集、E2EE v2 帧几何与明文握手校验；P1-c 起补 secretbox 封包
 common/     version / log / args / 平台路径 / 纯 C++ SHA-256、HMAC、HKDF、base64
 server/     http_app / sessions / hub / static_files / auth
-gateway/    config / hub_link / orca_bridge / admin_server / self_update / pairing
+gateway/    main + ui/{main_window, config_store, pairing, status_model}；P4 起补 hub_link / orca_bridge
 web/        index.html + styles.css + ES modules（无构建、无框架）
 tests/      unit / vectors / integration
 packaging/  deb / windows / caddy
@@ -49,7 +50,8 @@ packaging/  deb / windows / caddy
 | P1-c | X25519 派生 + secretbox 封包 + scrypt | 待 libsodium / 静态 OpenSSL 就位 |
 | P2 | Orca JSON-RPC | 真实 Orca：`status.get` / `project.list` / `worktree.ps` |
 | P3 | server 全量 | 本地集成 + `/api/health` |
-| P4 | gateway 全量 | mock hub + 真实 Orca，断线重连不泄漏 Orca socket |
+| P4 | gateway 后台全量（hub link / Orca bridge / 订阅重放） | mock hub + 真实 Orca，断线重连不泄漏 Orca socket |
+| P4-UI | Qt Widgets 配置窗口骨架 | **已完成**：动态 Qt 编译 + offscreen smoke，`gateway_core` 单测，7/7 CTest |
 | P5 | 零构建原生前端 | 390×844 下完整写入周期 |
 | P6 | 打包 + 全链路联调 | 真实 VPS + Orca + 手机端到端 |
 
@@ -62,3 +64,12 @@ packaging/  deb / windows / caddy
 3. Windows 上 OpenSSL 默认不加载系统根证书，gateway 的 WSS 需要显式 CA bundle 或注入系统 store。
 4. 无框架前端的状态同步（输入框草稿、`<details>` 展开态、审批局部状态、markdown XSS）是 P5 主要工作量。
 5. 静态 CRT（`/MT`）要求 vcpkg 使用 `x64-windows-static`；混用 `x64-windows`（动态 CRT）会链接冲突。
+   本机目前只有 `x64-windows`（含动态 Qt 6.11.3），静态 triplet 尚未安装。
+6. **Qt 静态构建**：`qtbase` 在 `x64-windows-static` 上从源码编译，首次约 1-2 小时；
+   CI/release 依赖 `VCPKG_DEFAULT_BINARY_CACHE` 复用产物。静态链接还需履行 Qt LGPLv3 的
+   可重链接义务（提供目标文件或改用商业授权）——发布前必须确认合规路径。
+7. **静态 Qt 平台插件**：不能从 DLL 自动发现，必须在 `main.cpp` 用
+   `Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)` 且 CMake 链接 `Qt6::QWindowsIntegrationPlugin`。
+   该分支**尚未在本机编译验证**（本机只有动态 Qt），首次静态 CI 构建需重点核对。
+8. **24 MiB 体积门禁是估算值**：静态 Qt Widgets 的实际体积取决于 feature 裁剪，
+   首次真实构建后必须按实测回填 `gateway/CMakeLists.txt` 与 `README.md`。

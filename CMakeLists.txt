@@ -12,17 +12,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# A self-contained exe/deb must not depend on the VC++ redistributable.
-# P1+ uses x64-windows-static / static OpenSSL so /MT stays consistent.
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
-if(NOT DEFINED ORCA_BUILD_VERSION OR ORCA_BUILD_VERSION STREQUAL "")
-    set(ORCA_BUILD_VERSION "${PROJECT_VERSION}-dev")
-endif()
-message(STATUS "orca-cpp build version: ${ORCA_BUILD_VERSION}")
-
 # ---------------------------------------------------------------------------
-# Options
+# Options (declared before the CRT block below reads ORCA_QT_STATIC)
 # ---------------------------------------------------------------------------
 option(ORCA_BUILD_SERVER  "Build orca-server (VPS hub)" ON)
 option(ORCA_BUILD_GATEWAY "Build orca-gateway (home machine)" ON)
@@ -31,6 +22,29 @@ option(ORCA_BUILD_TESTS   "Build unit tests" ON)
 # instead of a reported warning, so a broken build never reaches packaging.
 option(ORCA_REQUIRE_NETWORK_DEPS "Require Boost and libsodium at configure time" OFF)
 option(ORCA_SIZE_GATE "Fail the build when a binary exceeds its size budget" ON)
+# The gateway's configuration UI is a Qt Widgets window (no loopback HTTP page).
+option(ORCA_BUILD_GATEWAY_UI "Build the Qt configuration window into orca-gateway" ON)
+# Delivered config: static Qt + /MT -> one self-contained exe. OFF uses a dynamic
+# Qt install + /MD and exists only to verify the UI before static Qt is built.
+option(ORCA_QT_STATIC "Link Qt statically with the static MSVC CRT" ON)
+option(ORCA_REQUIRE_QT "Fail configure when Qt6 Widgets is missing" OFF)
+
+# A self-contained release exe must not depend on the VC++ redistributable.
+# The delivered configuration uses static Qt + static CRT (/MT) on Windows.
+# ORCA_QT_STATIC=OFF switches the whole tree to /MD so the UI can be compiled
+# and smoke-tested against a dynamic Qt install (used for local verification).
+if(MSVC)
+    if(ORCA_QT_STATIC)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    else()
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    endif()
+endif()
+
+if(NOT DEFINED ORCA_BUILD_VERSION OR ORCA_BUILD_VERSION STREQUAL "")
+    set(ORCA_BUILD_VERSION "${PROJECT_VERSION}-dev")
+endif()
+message(STATUS "orca-cpp build version: ${ORCA_BUILD_VERSION}")
 
 include(cmake/CompilerFlags.cmake)
 include(cmake/Dependencies.cmake)

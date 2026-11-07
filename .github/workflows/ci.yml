@@ -1,11 +1,12 @@
 name: CI
 
-# The 8 MiB size gate is a POST_BUILD custom command on each target
+# The size gate is a POST_BUILD custom command on each target
 # (server/CMakeLists.txt, gateway/CMakeLists.txt) using $<TARGET_FILE:...>, so
 # it already runs as part of `cmake --build` on every platform. CI must not
 # repeat it with a hand-written relative path: that duplicate step was the
 # only failure in the first CI run. Check "[orca-size] verdict : OK" in the
-# Build step log instead.
+# Build step log instead. The gateway budget is 24 MiB when static Qt is linked
+# (8 MiB for the CLI skeleton / server).
 on:
   push:
   pull_request:
@@ -24,11 +25,25 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install vcpkg dependencies (static CRT)
+      # Static Qt is built from source on the first run (1-2 h). The binary
+      # cache makes every later run reuse it instead of recompiling Qt.
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/bincache
+          key: vcpkg-${{ runner.os }}-static-qt-${{ hashFiles('scripts/setup-deps.ps1', 'cmake/Dependencies.cmake') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-static-qt-
+      - name: Install vcpkg dependencies (static CRT + static Qt)
+        env:
+          VCPKG_DEFAULT_BINARY_CACHE: C:/vcpkg/bincache
         shell: pwsh
         run: |
+          if (-not (Test-Path $env:VCPKG_DEFAULT_BINARY_CACHE)) {
+            New-Item -ItemType Directory -Path $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+          }
           vcpkg install --triplet x64-windows-static `
-            openssl nlohmann-json libsodium boost-beast
+            openssl nlohmann-json libsodium boost-beast qtbase
       - name: Configure
         shell: pwsh
         # No -G: CMake picks the installed Visual Studio generator, which does
@@ -38,7 +53,8 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DVCPKG_MANIFEST_MODE=OFF `
-            -DORCA_REQUIRE_NETWORK_DEPS=ON
+            -DORCA_REQUIRE_NETWORK_DEPS=ON `
+            -DORCA_REQUIRE_QT=ON
       - name: Build
         run: cmake --build build --config Release
       - name: Test

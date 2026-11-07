@@ -3,11 +3,15 @@
 #include <chrono>
 #include <cstdio>
 #include <ctime>
+#include <fstream>
 #include <iostream>
+#include <string>
 
 namespace orca {
 
 namespace {
+
+std::ofstream g_logFile;
 
 const char* levelName(LogLevel level) {
     switch (level) {
@@ -34,9 +38,21 @@ std::string utcTimestamp() {
 
 }  // namespace
 
+void setLogFile(const std::string& path) {
+    if (g_logFile.is_open()) g_logFile.close();
+    if (path.empty()) return;
+    g_logFile.open(path, std::ios::app);
+}
+
 void log(LogLevel level, std::string_view message) {
+    const std::string line = utcTimestamp() + " [" + levelName(level) + "] " +
+                             std::string(message) + "\n";
+    if (g_logFile.is_open()) {
+        g_logFile << line << std::flush;
+        return;
+    }
     std::ostream& out = level == LogLevel::kInfo ? std::cout : std::cerr;
-    out << utcTimestamp() << " [" << levelName(level) << "] " << message << '\n';
+    out << line;
     out.flush();
 }
 

@@ -16,8 +16,22 @@ add_executable(orca_protocol_tests unit/protocol_test.cpp)
 target_include_directories(orca_protocol_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/unit)
 target_link_libraries(orca_protocol_tests PRIVATE orca_common orca_protocol)
 
+# Gateway config/pairing/status logic is plain C++ (no Qt), so it stays under
+# test even when static Qt has not been built yet.
+add_executable(orca_gateway_core_tests
+    unit/gateway_core_test.cpp
+    ${CMAKE_SOURCE_DIR}/gateway/ui/config_store.cpp
+    ${CMAKE_SOURCE_DIR}/gateway/ui/pairing.cpp
+    ${CMAKE_SOURCE_DIR}/gateway/ui/status_model.cpp)
+target_include_directories(orca_gateway_core_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/unit
+    ${CMAKE_SOURCE_DIR}/gateway/ui)
+target_link_libraries(orca_gateway_core_tests PRIVATE
+    orca_common nlohmann_json::nlohmann_json)
+
 add_test(NAME smoke COMMAND orca_smoke_tests)
 add_test(NAME crypto COMMAND orca_crypto_tests)
+add_test(NAME gateway_core COMMAND orca_gateway_core_tests)
 add_test(NAME protocol COMMAND orca_protocol_tests
     ${CMAKE_SOURCE_DIR}/tests/vectors/p1-vectors.json)
 
