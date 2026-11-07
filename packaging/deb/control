@@ -1,0 +1,13 @@
+Package: orca-web
+Version: __ORCA_VERSION__
+Section: net
+Priority: optional
+Architecture: amd64
+Maintainer: dewei <860656812@qq.com>
+Depends: libc6 (>= 2.34), libgcc-s1, libssl3, libsodium23, libstdc++6
+Description: orca-web hub server (orca-server)
+ Headless WebSocket hub for the orca-web remote-access pair: it relays
+ end-to-end-encrypted traffic between the home gateway and mobile clients
+ and never sees plaintext. Runs behind a reverse proxy on 127.0.0.1:8788.
+ Depends are the shared libraries the binary is linked against on
+ Debian/Ubuntu amd64; rebuild the package from source for other targets.

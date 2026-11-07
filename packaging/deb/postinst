@@ -1,0 +1,17 @@
+#!/bin/sh
+# postinst for the orca-web hub package. Kept minimal on purpose: no
+# deb-systemd-helper (this package is built with plain dpkg-deb), no
+# enable/start — during the P0 skeleton the service exits immediately, so
+# enabling is left to the operator:
+#   systemctl enable --now orca-web
+set -e
+
+if ! getent passwd orca-web >/dev/null; then
+    adduser --system --group --no-create-home --home /nonexistent orca-web
+fi
+
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+fi
+
+exit 0

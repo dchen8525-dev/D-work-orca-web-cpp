@@ -1,0 +1,12 @@
+#!/bin/sh
+# Stop the service before removal or upgrade so dpkg never replaces a running
+# binary. Errors are ignored: the unit may never have been enabled.
+set -e
+
+if [ "$1" = "remove" ] || [ "$1" = "upgrade" ]; then
+    if [ -d /run/systemd/system ]; then
+        systemctl stop orca-web.service || true
+    fi
+fi
+
+exit 0

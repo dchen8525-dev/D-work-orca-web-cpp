@@ -29,3 +29,8 @@ server.json
 gateway.json
 sessions.json
 *.tmp
+# ... except the packaged conffile template, which is source, not state
+!packaging/deb/server.json
+
+# Deb build artifacts (scripts/build-deb.sh output)
+dist/

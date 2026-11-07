@@ -9,3 +9,5 @@
 
 # Windows-only; native CRLF is what Windows PowerShell 5.1 expects.
 *.ps1 text eol=crlf
+packaging/deb/* text eol=lf
+packaging/build-deb.sh text eol=lf
