@@ -48,9 +48,12 @@ if(ORCA_HAVE_QT)
         if(TARGET Qt6::QWindowsIntegrationPlugin)
             target_link_libraries(orca-gateway PRIVATE Qt6::QWindowsIntegrationPlugin)
         endif()
-        # Static Qt6 Widgets + OpenSSL/libsodium is estimated at 12-20 MiB.
-        # 24 MiB is a provisional ceiling; tighten it after the first real build.
-        set(ORCA_GATEWAY_MAX_BYTES 25165824)
+        # Measured 2026-11-07 (MSVC 19.51 / Release / static Qt 6.11.3 via
+        # vcpkg defaults, including static ICU + OpenSSL): 52,764,160 bytes
+        # (~50.3 MiB). The 24 MiB estimate did not account for static ICU.
+        # 56 MiB leaves headroom; trim the ICU feature if the artifact ever
+        # needs to shrink (must be changed for CI in the same commit).
+        set(ORCA_GATEWAY_MAX_BYTES 58720256)
     else()
         # Dynamic Qt: the DLLs live beside the exe, so the exe itself stays small.
         set(ORCA_GATEWAY_MAX_BYTES 8388608)

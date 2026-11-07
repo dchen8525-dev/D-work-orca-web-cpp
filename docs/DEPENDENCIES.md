@@ -8,9 +8,9 @@
 |---|---|---|---|
 | `openssl` | 本机仅 `x64-windows`（动态）；交付需 `x64-windows-static` | SHA-256 / HMAC-HKDF / `EVP_PBE_scrypt` / WSS 客户端 TLS | ≈ 2.5 MB |
 | `nlohmann-json` | 本机已装（header-only） | wire 帧、配置 JSON | ≈ 0 |
-| `libsodium` | **本机未装成功** | X25519（`crypto_box_beforenm`）、XSalsa20-Poly1305（`crypto_secretbox_easy`）、随机字节。E2EE v2 必需，OpenSSL 没有 XSalsa20 | ≈ 0.4 MB |
-| `boost-beast` (+asio) | **本机未装成功** | HTTP 服务端、WS 服务端、WSS 客户端 | ≈ 1 MB，header-only 为主 |
-| `qtbase`（Qt6 Widgets） | 本机已装 **动态** `x64-windows`（6.11.2）；交付需**静态** `x64-windows-static`，**尚未构建** | gateway 的 Qt Widgets 配置窗口（替代原 loopback HTML 管理页） | ≈ 12–20 MB（含 Core/Gui/Widgets + 静态平台插件） |
+| `libsodium` | 本机已装 `x64-windows-static`（2026-11-07） | X25519（`crypto_box_beforenm`）、XSalsa20-Poly1305（`crypto_secretbox_easy`）、随机字节。E2EE v2 必需，OpenSSL 没有 XSalsa20 | ≈ 0.4 MB |
+| `boost-beast` (+asio) | 本机已装 `x64-windows-static`（2026-11-07） | HTTP 服务端、WS 服务端、WSS 客户端 | ≈ 1 MB，header-only 为主 |
+| `qtbase`（Qt6 Widgets） | 动态 `x64-windows` 6.11.2（10-31 装）；**静态** `x64-windows-static` 6.11.3（11-07 装，约 22 分钟源码编译） | gateway 的 Qt Widgets 配置窗口（替代原 loopback HTML 管理页） | **实测**：单 exe 50.3 MiB（静态 ICU + OpenSSL 主因，见下文） |
 | 仍不引入 | — | `qtdeclarative`（QML）、独立 ICU、zlib permessage-deflate | 与 Qt Widgets 选型无关，且会进一步增大体积 |
 
 Qt 的动态集合实测（本机 `x64-windows`）：`Qt6Core 5.1M + Qt6Gui 6.7M + Qt6Widgets 5.9M ≈ 17.7 MB`，
@@ -60,25 +60,27 @@ Qt 也必须是静态构建：动态 Qt 会强制 `/MD` 并要求随包携带 DL
 与「单文件 Portable」冲突。静态 Qt 不能自动发现平台插件，`main.cpp` 用
 `Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)`、CMake 链接 `Qt6::QWindowsIntegrationPlugin`。
 
-本机 `x64-windows-static` **当前一个包都没装**（只有 `x64-windows` 的 81 个包，含动态 Qt 6.11.2）。
-所以：
+本机 `x64-windows-static` 已于 2026-11-07 装齐全量依赖（openssl / nlohmann-json /
+libsodium / boost-beast / qtbase 6.11.3）。所以：
 
-- 交付配置（`/MT` + 静态 Qt）**尚未在本机编译验证**，只能由装好依赖后的 CI 首次构建确认；
-- 本机 UI 代码用 `-DORCA_QT_STATIC=OFF` 切换到 `/MD` + 动态 Qt 做真实编译与 offscreen smoke，
+- 交付配置（`/MT` + 静态 Qt）**已在本机编译验证**：单 exe 50.3 MiB 在空目录独立运行，
+  `--version`、`--help` 正常，真实窗口（静态平台插件）弹出成功；
+- 本机 UI 代码仍可 `-DORCA_QT_STATIC=OFF` 切换到 `/MD` + 动态 Qt 做快速迭代，
   这是**验证配置，不是发布配置**；
 - `ORCA_REQUIRE_QT=ON` 让 CI/release 在 Qt 缺失时直接 configure 失败，避免把 CLI 骨架打包。
 
 `scripts/setup-deps.ps1` 已加入 `qtbase`。静态 Qt 从源码编译，首次约 1-2 小时；
 CI/release 用 `VCPKG_DEFAULT_BINARY_CACHE` 复用二进制包。`-SkipQt` 可只装网络依赖。
 
-## Qt 静态链接的合规与体积（未决）
+## Qt 静态链接的合规与体积（合规未决，体积已实测）
 
 Qt 6 是 LGPLv3 / GPLv3 / 商业三许可。**静态链接单 exe 需要履行 LGPL 的可重链接义务**
 （提供目标文件或改用商业授权）——发布正式版前必须确认合规路径，本骨架阶段不做法律判断。
 
-24 MiB 的 gateway 体积门禁是**估算值，未经静态构建实测**。首次真实构建后必须把实测值回填到
-`gateway/CMakeLists.txt`、`README.md` 与 `docs/ARCHITECTURE.md`；若静态 Qt 明显超出，
-优先裁剪 qtbase feature（`-no-feature-...`），而不是放宽到接近原 Bun exe 的量级。
+体积门禁已按 2026-11-07 实测回填：gateway 单 exe **52,764,160 B（50.3 MiB）**，
+远超最初 24 MiB 估算——主因是 vcpkg qtbase 默认 feature 打开了**静态 ICU**
+（约 25-30 MB，QSql/QNetwork 的 locale 支持用）。门禁设 56 MiB；若产物需要瘦身，
+优先裁剪 qtbase feature（先 `-icu`，需与 CI 安装参数同步），而不是放宽到接近原 Bun exe 的量级。
 
 ## 备选方案（仅在依赖始终装不上时启用，需重新确认）
 
@@ -91,8 +93,8 @@ Qt 6 是 LGPLv3 / GPLv3 / 商业三许可。**静态链接单 exe 需要履行 L
 ## 体积回退策略
 
 体积门禁分两层：`orca-server` 与无 Qt 的 CLI 骨架仍是 **8 MiB**；链接静态 Qt 的
-`orca-gateway` 暂定 **24 MiB**。`deb ≤ 10 MiB` 不受 Qt 影响（hub 是 headless 的）。
+`orca-gateway` 实测 50.3 MiB、门禁 **56 MiB**。`deb ≤ 10 MiB` 不受 Qt 影响（hub 是 headless 的）。
 
-若静态 gateway 超过 24 MiB，`/O1` + LTO + `--gc-sections` 已启用，下一步按顺序考虑：
-裁剪 qtbase feature → 换 `ixwebsocket` 缩小网络栈 → 重新评估 Qt 与「单文件」的取舍。
+若静态 gateway 需要进一步缩小，`/O1` + LTO + `--gc-sections` 已启用，下一步按顺序考虑：
+裁剪 qtbase feature（先 `-icu`）→ 换 `ixwebsocket` 缩小网络栈 → 重新评估 Qt 与「单文件」的取舍。
 任何回退都需要重新确认部署形态，不能单方面放宽门禁。

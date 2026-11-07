@@ -64,12 +64,17 @@ packaging/  deb / windows / caddy
 3. Windows 上 OpenSSL 默认不加载系统根证书，gateway 的 WSS 需要显式 CA bundle 或注入系统 store。
 4. 无框架前端的状态同步（输入框草稿、`<details>` 展开态、审批局部状态、markdown XSS）是 P5 主要工作量。
 5. 静态 CRT（`/MT`）要求 vcpkg 使用 `x64-windows-static`；混用 `x64-windows`（动态 CRT）会链接冲突。
-   本机目前只有 `x64-windows`（含动态 Qt 6.11.2），静态 triplet 尚未安装。
+   本机 `x64-windows`（动态 Qt 6.11.2）与 `x64-windows-static`（静态 Qt 6.11.3）均已安装。
 6. **Qt 静态构建**：`qtbase` 在 `x64-windows-static` 上从源码编译，首次约 1-2 小时；
    CI/release 依赖 `VCPKG_DEFAULT_BINARY_CACHE` 复用产物。静态链接还需履行 Qt LGPLv3 的
    可重链接义务（提供目标文件或改用商业授权）——发布前必须确认合规路径。
 7. **静态 Qt 平台插件**：不能从 DLL 自动发现，必须在 `main.cpp` 用
    `Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)` 且 CMake 链接 `Qt6::QWindowsIntegrationPlugin`。
-   该分支**尚未在本机编译验证**（本机只有动态 Qt），首次静态 CI 构建需重点核对。
-8. **24 MiB 体积门禁是估算值**：静态 Qt Widgets 的实际体积取决于 feature 裁剪，
-   首次真实构建后必须按实测回填 `gateway/CMakeLists.txt` 与 `README.md`。
+   该分支已于 2026-11-07 静态编译并真实弹窗验证（标题「orca 网关管理」）。
+8. **静态 Qt 与 host 工具版本差**：vcpkg 静态 triplet 不装 `Qt6*Tools` 包，moc/rcc 来自
+   动态 host triplet；两者 patch 版本不同（host 6.11.2 / port 6.11.3）会被 Qt 的包版本
+   检查拒绝，需 `QT_NO_PACKAGE_VERSION_CHECK` 放行（消费者侧在 `cmake/Dependencies.cmake`，
+   port 侧在本机 vcpkg 的 `windows.cmake` 补丁）。host 与 target 版本一致时该开关无副作用。
+9. **体积门禁实测回填**：静态 Qt（vcpkg 默认 feature，含静态 ICU + OpenSSL）实测
+   50.3 MiB，远超原 24 MiB 估算（ICU 主因，约 25-30 MB）。门禁已回填 56 MiB；
+   瘦身首选裁剪 qtbase feature（先 `-icu`），CI 需同步。

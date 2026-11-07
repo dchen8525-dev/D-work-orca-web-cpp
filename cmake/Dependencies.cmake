@@ -12,6 +12,13 @@ find_package(nlohmann_json CONFIG QUIET)
 
 set(ORCA_HAVE_QT OFF)
 if(ORCA_BUILD_GATEWAY_UI AND WIN32)
+    # The static triplet installs no Qt6*Tools packages; the build resolves
+    # host tools (moc, rcc) from the dynamic host triplet install, which can
+    # be a different Qt patch version (e.g. host 6.11.2 for a 6.11.3 static
+    # port). Qt's package version check rejects that cross-patch mix; moc and
+    # rcc are compatible across patch releases, so relax the check here. It is
+    # a no-op when host and target Qt versions already match (CI).
+    set(QT_NO_PACKAGE_VERSION_CHECK ON)
     find_package(Qt6 QUIET COMPONENTS Widgets)
     if(Qt6_FOUND AND TARGET Qt6::Widgets)
         set(ORCA_HAVE_QT ON)

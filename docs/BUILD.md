@@ -8,7 +8,7 @@
 | MSVC | `VC\Tools\MSVC\14.51.36231`，`cl.exe` 19.51.36260.0 |
 | CMake | VS 自带 4.3.1-msvc1，`Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe` |
 | Windows SDK | 10.0.26100.0 |
-| vcpkg | `D:\work\vcpkg`（2026-09-26），`x64-windows` 已装 81 个包（含动态 Qt 6.11.2）；`x64-windows-static` **为空** |
+| vcpkg | `D:\work\vcpkg`（2026-09-26），`x64-windows` 已装 81 个包（含动态 Qt 6.11.2）；`x64-windows-static` 已装全量依赖（静态 Qt 6.11.3，2026-11-07，约 22 分钟源码编译 + 二进制缓存） |
 | CMake 生成器 | 不指定 `-G` 时自动选 `Visual Studio 18 2026`（多配置，用 `--config Release`） |
 
 ## 一个必须知道的环境坑
@@ -63,7 +63,10 @@ P1-c 起设为 `ON`。`ORCA_REQUIRE_QT` 同理：CI/release 设为 `ON`，缺 Qt
 | `-DORCA_QT_STATIC=OFF` | `/MD` | 动态 `x64-windows` | 本机验证 UI；输出目录会带 17 个 DLL（约 58 MB） |
 
 静态 Qt 首次从源码编译约 1-2 小时，CI 用 `VCPKG_DEFAULT_BINARY_CACHE` 缓存。
-静态构建还必须在 `main.cpp` 导入 `QWindowsIntegrationPlugin`（已实现，但**尚未经静态编译验证**）。
+静态构建还必须在 `main.cpp` 导入 `QWindowsIntegrationPlugin`（已实现，并已于 2026-11-07
+静态编译 + 真实弹窗验证）。注意静态 triplet 不装 `Qt6*Tools` 包，moc/rcc 来自动态 host
+triplet；host 与 port 的 Qt patch 版本不一致时需 `QT_NO_PACKAGE_VERSION_CHECK` 放行，
+消费者侧已在 `cmake/Dependencies.cmake` 处理。
 
 本机验证动态 Qt 时需给 offscreen smoke 指定插件路径：
 
@@ -125,7 +128,7 @@ cmake -S . -B build -U ORCA_BUILD_VERSION
 | 目标 | 上限 |
 |---|---|
 | `orca-server` / 无 Qt 的 CLI 骨架 | 8 MiB |
-| `orca-gateway` 链接**静态 Qt** 时 | 24 MiB（估算，首次静态构建后按实测收紧） |
+| `orca-gateway` 链接**静态 Qt** 时 | 56 MiB（实测 50.3 MiB，2026-11-07 回填；超限主因是静态 ICU） |
 | `orca-gateway` 动态 Qt 验证构建 | 8 MiB（DLL 体积不计入 exe 本体） |
 | deb | 10 MiB（P6 打包步骤用同一脚本） |
 

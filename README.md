@@ -54,8 +54,8 @@ bash scripts/build.sh
 
 P1 起 `nlohmann-json`（header-only）是编译必需，Windows 构建必须带 vcpkg toolchain；
 `-NoToolchain` 从 P1 起不可用。**交付配置**是 `x64-windows-static` + `/MT` + 静态 Qt；
-`x64-windows-static` 当前尚未在本机安装（本机只有 `x64-windows` 的动态 Qt 6.11.2），
-因此静态配置**尚未在本机编译验证**。
+该配置已于 2026-11-07 在本机完整编译验证：单 exe（50.3 MiB，含静态 ICU/OpenSSL）
+在空目录独立运行，`Q_IMPORT_PLUGIN` 静态平台插件真实弹窗成功。
 
 在静态 Qt 装好之前，可用本机已有的动态 Qt 验证 UI 代码：
 
@@ -80,11 +80,12 @@ P0 实测（MSVC 19.51 / Release /O1 + LTO + 静态 CRT）：CLI 骨架 `orca-ga
 | 目标 | 上限 | 说明 |
 |---|---|---|
 | `orca-server`（及 CLI 骨架） | 8 MiB | 纯 C++ 逻辑，不含 Qt |
-| `orca-gateway`（静态 Qt） | **24 MiB** | 静态 Qt6 Widgets + OpenSSL/libsodium 的估算上限，首次真实构建后按实测收紧 |
+| `orca-gateway`（静态 Qt） | **56 MiB** | 实测 50.3 MiB（静态 Qt 6.11.3 按 vcpkg 默认 feature，含静态 ICU + OpenSSL），2026-11-07 回填 |
 | deb | 10 MiB | P6 打包步骤用同一脚本 |
 
-24 MiB 是**估算值、尚未经静态构建实测**：Qt 静态库体积取决于 feature 裁剪，CI 首次跑完必须回填真实数字。
-相对原项目约 110 MB 的 Bun exe，即使 24 MiB 仍是 4 倍以上的缩减；deb 侧不受 Qt 影响。
+50.3 MiB 的主因是**静态 ICU**（vcpkg qtbase 默认 feature，约 25-30 MB）。若产物需要瘦身，
+下一步是裁剪 qtbase feature（先 `-icu`），但必须与 CI 的安装参数同步修改；
+相对原项目约 110 MB 的 Bun exe 仍是 2 倍以上缩减。deb 侧不受 Qt 影响。
 
 ## 文档
 
