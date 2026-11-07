@@ -10,7 +10,7 @@ param(
     [string]$BuildType = "Release",
     [string]$Triplet = "x64-windows",
     [string]$VcpkgRoot = "D:\work\vcpkg",
-    [string]$Version = "0.1.0-dev",
+    [string]$Version = "0.0.1-dev",
     [switch]$NoToolchain,
     [switch]$RequireNetworkDeps
 )

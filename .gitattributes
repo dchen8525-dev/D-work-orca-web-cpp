@@ -1,0 +1,11 @@
+# All text files are stored as LF in the repository. On Windows, core.autocrlf
+# may convert them to CRLF on checkout; that is fine for sources and YAML, but
+# NOT for scripts that ubuntu runners execute (`bash: ... \r: command not found`).
+* text=auto
+
+# Executed by Linux / Node on GitHub Actions ubuntu runners.
+*.sh  text eol=lf
+*.mjs text eol=lf
+
+# Windows-only; native CRLF is what Windows PowerShell 5.1 expects.
+*.ps1 text eol=crlf

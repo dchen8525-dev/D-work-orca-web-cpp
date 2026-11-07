@@ -1,5 +1,12 @@
 add_executable(orca_smoke_tests unit/smoke_test.cpp)
 target_link_libraries(orca_smoke_tests PRIVATE orca_common orca_protocol)
+# Version consistency gate: a tag build injects its ref_name into version.hpp.
+# The test asserts BOTH the injected string and that it agrees with the
+# project() version, so a stale -DORCA_BUILD_VERSION left in CMakeCache.txt
+# cannot silently pass while the sources claim a different version.
+target_compile_definitions(orca_smoke_tests
+    PRIVATE ORCA_EXPECTED_VERSION="${ORCA_BUILD_VERSION}"
+            ORCA_PROJECT_VERSION="${PROJECT_VERSION}")
 
 add_executable(orca_crypto_tests unit/crypto_test.cpp)
 target_include_directories(orca_crypto_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/unit)

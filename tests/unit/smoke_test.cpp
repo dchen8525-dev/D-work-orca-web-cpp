@@ -38,8 +38,23 @@ orca::CliOptions parse(orca::AppKind kind, std::vector<std::string> args) {
 int main() {
     using orca::AppKind;
 
-    check(std::string(orca::buildVersion()).find("0.1.0") != std::string::npos,
-          "build version carries the project version");
+    // Version consistency gate: the string compiled into version.hpp must be
+    // exactly the ORCA_BUILD_VERSION CMake injected (tag builds override it).
+    // A hardcoded literal here would go stale on every release; the expected
+    // value comes from tests/CMakeLists.txt instead.
+#ifdef ORCA_EXPECTED_VERSION
+    const std::string version = orca::buildVersion();
+    const std::string expected = ORCA_EXPECTED_VERSION;
+    const std::string project = ORCA_PROJECT_VERSION;
+    check(version == expected,
+          "build version matches the injected version (" + expected + ")");
+    check(version.rfind(project, 0) == 0,
+          "build version agrees with project() version (" + project + ")");
+    check(version.find('@') == std::string::npos,
+          "version header has no unsubstituted @ORCA_BUILD_VERSION@ placeholder");
+#else
+    check(!std::string(orca::buildVersion()).empty(), "build version is non-empty");
+#endif
     check(orca::versionBanner("orca-server").find("orca-server") != std::string::npos,
           "version banner names the program");
 

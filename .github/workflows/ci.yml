@@ -1,5 +1,11 @@
 name: CI
 
+# The 8 MiB size gate is a POST_BUILD custom command on each target
+# (server/CMakeLists.txt, gateway/CMakeLists.txt) using $<TARGET_FILE:...>, so
+# it already runs as part of `cmake --build` on every platform. CI must not
+# repeat it with a hand-written relative path: that duplicate step was the
+# only failure in the first CI run. Check "[orca-size] verdict : OK" in the
+# Build step log instead.
 on:
   push:
   pull_request:
@@ -37,10 +43,3 @@ jobs:
         run: cmake --build build --config Release
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
-      - name: Size gate
-        shell: pwsh
-        run: |
-          cmake -DORCA_TARGET_FILE=build/gateway/Release/orca-gateway.exe `
-            -DORCA_MAX_BYTES=8388608 -P cmake/SizeReport.cmake
-          cmake -DORCA_TARGET_FILE=build/server/Release/orca-server.exe `
-            -DORCA_MAX_BYTES=8388608 -P cmake/SizeReport.cmake

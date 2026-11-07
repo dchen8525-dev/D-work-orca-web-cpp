@@ -39,7 +39,7 @@
 
 | 项 | 值 |
 |---|---|
-| 版本注入 | CMake `-DORCA_BUILD_VERSION=<tag>`，默认 `0.1.0-dev` |
+| 版本注入 | CMake `-DORCA_BUILD_VERSION=<tag>`，默认 `0.0.1-dev`；tag `0.0.1` 注入 `0.0.1` |
 | 版本命令 | 两个进程均支持 `--version` / `--help` |
 | hub 监听 | `127.0.0.1:8788`（Caddy 反代） |
 | 管理页端口 | `8790`（`ORCA_WEB_ADMIN_PORT` 可覆盖，P4） |

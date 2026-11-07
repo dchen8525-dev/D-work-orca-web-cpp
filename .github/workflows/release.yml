@@ -1,11 +1,13 @@
 name: Release
 
-# P0 skeleton: on every v* tag build both native binaries, verify their size,
-# checksum them and upload them as workflow artifacts. P6 adds the deb payload,
-# systemd unit, static web pages, Caddy bootstrap and `gh release create`.
+# On a release tag (v0.0.1 or 0.0.1) build both native binaries, verify their
+# size, checksum them and upload them as workflow artifacts. P6 adds the deb
+# payload, systemd unit, static web pages and Caddy bootstrap.
+# The GitHub Release page itself is created with `gh release create`, so a
+# workflow failure cannot silently skip the tag's release notes.
 on:
   push:
-    tags: ['v*']
+    tags: ['v*', '[0-9]*']
 
 permissions:
   contents: write
@@ -38,9 +40,12 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item build/gateway/Release/orca-gateway.exe orca-gateway-windows-x64.exe
-          cmake -DORCA_TARGET_FILE=orca-gateway-windows-x64.exe `
-            -DORCA_MAX_BYTES=8388608 -P cmake/SizeReport.cmake
-          (Get-FileHash orca-gateway-windows-x64.exe -Algorithm SHA256).Hash.ToLower() |
+          # Pass -D as a single quoted argument with an absolute path: an
+          # unquoted relative *.exe value reached the script truncated in the
+          # first CI run ("file not found: .../orca-gateway").
+          $staged = Join-Path $env:GITHUB_WORKSPACE 'orca-gateway-windows-x64.exe'
+          cmake "-DORCA_TARGET_FILE=$staged" "-DORCA_MAX_BYTES=8388608" -P cmake/SizeReport.cmake
+          (Get-FileHash $staged -Algorithm SHA256).Hash.ToLower() |
             Out-File -Encoding ascii orca-gateway-windows-x64.exe.sha256
       - uses: actions/upload-artifact@v4
         with:

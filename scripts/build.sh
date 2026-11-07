@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="${BUILD_DIR:-$ROOT/build}"
-VERSION="${ORCA_VERSION:-0.1.0-dev}"
+VERSION="${ORCA_VERSION:-0.0.1-dev}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 
 cmake -S "$ROOT" -B "$BUILD" -G Ninja \

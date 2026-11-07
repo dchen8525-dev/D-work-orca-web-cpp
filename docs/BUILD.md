@@ -64,8 +64,21 @@ P1-c 起设为 `ON`，缺依赖直接 configure 失败，避免带着残缺依�
 
 ```bash
 bash scripts/build.sh                    # Linux：configure + build + ctest + size gate
-ORCA_VERSION=v0.1.0 bash scripts/build.sh
+ORCA_VERSION=0.0.1 bash scripts/build.sh
 ```
+
+### 版本号与本地缓存
+
+`ORCA_BUILD_VERSION` 默认是 `project(VERSION)` + `-dev`；tag 构建由 CI 用
+`github.ref_name` 注入。因为 `-D` 写的是 **cache 变量**，手动改过
+`CMakeLists.txt` 的 `VERSION` 后，旧值可能仍留在 `build/CMakeCache.txt`，
+表现为 `--version` 显示旧版本而测试却全绿。清理方式：
+
+```bash
+cmake -S . -B build -U ORCA_BUILD_VERSION
+```
+
+`smoke` 测试同时校验「注入值」与「`project()` 版本」两者一致，能抓到这种缓存钉住。
 
 ## 体积门禁
 

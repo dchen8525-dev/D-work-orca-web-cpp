@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(orca_cpp
-    VERSION 0.1.0
+    VERSION 0.0.1
     DESCRIPTION "C++ rewrite of orca-web: hub, home gateway and a zero-build web client"
     LANGUAGES CXX)
 
