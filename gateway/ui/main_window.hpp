@@ -25,6 +25,10 @@ class MainWindow : public QMainWindow {
 
 public:
     explicit MainWindow(std::filesystem::path configPath, QWidget* parent = nullptr);
+    // P4: a custom provider (e.g. RuntimeStatusProvider with a live hub link);
+    // nullptr keeps the config-file-only skeleton provider.
+    MainWindow(std::filesystem::path configPath, std::unique_ptr<StatusProvider> provider,
+               QWidget* parent = nullptr);
     ~MainWindow() override;
 
 private slots:

@@ -21,17 +21,42 @@ set(ORCA_GATEWAY_UI_SOURCES
     ui/main_window.cpp)
 
 if(ORCA_HAVE_QT)
+    find_package(Threads REQUIRED)
+    set(ORCA_GATEWAY_NET_SOURCES "")
+    set(ORCA_GATEWAY_NET_LIBS "")
+    # The outbound hub link needs Boost.Beast; a tree without it still builds
+    # the window (skeleton status provider, no runtime thread).
+    if(ORCA_BEAST_INCLUDE_DIR)
+        list(APPEND ORCA_GATEWAY_NET_SOURCES net/hub_link_core.cpp net/hub_client.cpp)
+        list(APPEND ORCA_GATEWAY_NET_LIBS OpenSSL::SSL Threads::Threads)
+    endif()
+
     add_executable(orca-gateway
         main.cpp
+        ${ORCA_GATEWAY_NET_SOURCES}
         ${ORCA_GATEWAY_UI_SOURCES})
 
-    target_include_directories(orca-gateway PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ui)
+    target_include_directories(orca-gateway PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui
+        ${CMAKE_CURRENT_SOURCE_DIR}/net
+        ${ORCA_BEAST_INCLUDE_DIR})
     target_link_libraries(orca-gateway PRIVATE
         orca_common
         orca_protocol
         nlohmann_json::nlohmann_json
+        ${ORCA_GATEWAY_NET_LIBS}
         Qt6::Widgets)
     set_target_properties(orca-gateway PROPERTIES AUTOMOC ON)
+
+    if(ORCA_BEAST_INCLUDE_DIR)
+        target_compile_definitions(orca-gateway PRIVATE ORCA_HAVE_HUB_CLIENT=1)
+    endif()
+
+    if(WIN32)
+        # Boost.Asio needs the Windows version macro before it includes winsocks.
+        target_compile_definitions(orca-gateway PRIVATE _WIN32_WINNT=0x0A00)
+    endif()
 
     if(WIN32)
         # Console subsystem on purpose: --version / --help must reach stdout so

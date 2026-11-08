@@ -2,6 +2,12 @@
 
 #include <cstdlib>
 
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 namespace orca {
 
 namespace {
@@ -56,6 +62,20 @@ std::filesystem::path defaultStaticDir() {
     return std::filesystem::path("web");
 #else
     return std::filesystem::path("/opt/orca-web/web");
+#endif
+}
+
+
+std::string hostName() {
+#if defined(_WIN32)
+    char buffer[MAX_COMPUTERNAME_LENGTH + 1] = {};
+    DWORD size = sizeof(buffer);
+    if (GetComputerNameA(buffer, &size) == 0) return {};
+    return std::string(buffer, size);
+#else
+    char buffer[256] = {};
+    if (gethostname(buffer, sizeof(buffer) - 1) != 0) return {};
+    return std::string(buffer);
 #endif
 }
 

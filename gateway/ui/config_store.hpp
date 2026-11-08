@@ -31,6 +31,7 @@ struct ConfigUpdate {
 struct ConfigSnapshot {
     std::string serverUrl;
     std::string gatewayKey;
+    std::string gatewayId;   // file override or the machine hostname (config.ts)
     OrcaPairing orca;
     std::string raw;         // exact file text for the "view config" pane
     std::string configPath;

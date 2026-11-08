@@ -1,157 +1,179 @@
 # HANDOFF — 当前进展交接
 
-> 生成时间：2026-11-07 18:1x GMT+8（第二轮，接 15:50 的第一轮）
-> 仓库：`D:\work\orca-cpp`（分支 `main`，远端 `git@github.com:dchen8525-dev/D-work-orca-web-cpp.git`）
-> 本文件是**当前状态的权威快照**；`README.md` 是设计说明，细节以本文件为准。
-> 原项目 `D:\work\orca-web` 保持只读参考，不要改动。
+> 生成时间:2026-11-08 09:0x GMT+8(第三轮,接 11-07 的第二轮)
+> 仓库:`D:\work\orca-cpp`(分支 `main`,远端 `git@github.com:dchen8525-dev/D-work-orca-web-cpp.git`)
+> 本文件是**当前状态的权威快照**;`README.md` 是设计说明,协议细节以 `docs/PROTOCOL.md` 为准。
+> 原项目 `D:\work\orca-web` 保持只读参考,不要改动。
 
 ---
 
 ## 0. 一句话状态
 
-**交付配置（静态 Qt 单 exe）已在本机端到端验证成功**：单 exe 50.3 MiB 在空目录独立运行、
-`--version`/`--help` 正常、静态平台插件真实弹窗（「orca 网关管理」）、ctest 7/7 全绿、
-体积门禁按实测回填 56 MiB。第一轮的两大"致命"项已消灭一项（静态从未编译 → 已验证）；
-另一项（远端没有 UI 改动）已通过本地 3 个 commit 落盘，但**尚未 push**，远端 `main` 仍是 `f11dc93`。
+**P1-c(E2EE)、P3-a(hub 真实服务)、deb 打包、静态 Qt 交付验证全部完成并提交**;
+**P4-a(gateway 后台 hub 客户端)完成约 90%**:全部代码与接线已写完、orca-gateway 与
+12/13 测试构建通过,但 `hub_client_live` 测试目标有一个**最后的编译错误**卡在
+`hub_client.cpp:144`(async_connect 重载匹配),修掉后跑通 live 测试即可提交。
+所有 commit **均未 push**,远端 `main` 仍是 `f11dc93`(不含任何 UI/E2EE/hub/打包)。
 
 ---
 
-## 1. 本轮实际做了什么（带证据）
+## 1. 已完成里程碑(全部已提交、已验证)
 
-| # | 动作 | 命令 / 事实 | 结果 |
+| 里程碑 | commit | 内容 | 验证 |
 |---|---|---|---|
-| 1 | 本地落盘第一轮 UI 改动 | `git add -A && git commit` | `1d0cf8a`（27 文件，+1934/-112，含 gateway/ui/ 8 文件 + HANDOFF.md）；提交前扫描过 diff 无凭据 |
-| 2 | 静态依赖安装 | `scripts\setup-deps.ps1`（首轮） | 卡在 GitHub 直连 40 KB/s（cmake 4.4.4 54MB + PowerShell 7.6.9 110MB） |
-| 3 | VPS 加速 | 用户提供 VPS；SSH 密钥免密 + `ssh -D 1080` SOCKS 隧道 + vcpkg 走代理 | 直连 40 KB/s → 隧道 ~1 MB/s（25×）；PowerShell 109.6MB 约 100 秒下完 |
-| 4 | 静态包安装（除 qtbase） | vcpkg 增量 | openssl/libsodium/boost-beast/icu/freetype/harfbuzz 等全部装上；zstd 首次失败是打断误杀，重跑即过 |
-| 5 | qtbase 6.11.3 静态编译 | 首次失败（见 §4 坑 3）；工具链补丁后重跑 | **22 分钟编译成功**，二进制缓存已回填；`Qt6::QWindowsIntegrationPlugin` target 存在 |
-| 6 | 交付构建 | `.\scripts\build.ps1 -Version 0.0.1 -RequireNetworkDeps -RequireQt` | configure 首次失败（见 §4 坑 4）→ `Dependencies.cmake` 修复 → **exit 0**：`Qt6 Widgets: ON (static=ON)` |
-| 7 | 体积门禁 | POST_BUILD | 实测 **52,764,160 B（50.3 MiB）** 超原 24 MiB 估算 → 门禁回填 **56 MiB**（`gateway/CMakeLists.txt` 带实测注释）→ `verdict OK`；orca-server 241 KiB OK |
-| 8 | 单测 | build.ps1 内置 ctest | **7/7 Passed**（smoke / crypto / gateway_core / protocol / server_version / gateway_version / server_unknown_flag） |
-| 9 | 单 exe 独立验证 | 拷贝 exe 到空目录 | `--version` → `orca-gateway 0.0.1`（无 -dev）；`--help` 正常；PE32+ console |
-| 10 | 真实窗口 | `Start-Process` | `TITLE=[orca 网关管理]`，HWND 非零，静态 `QWindowsIntegrationPlugin` 生效（**第一轮未验证的分支就此闭环**） |
-| 11 | 文档修正 | 4 文档 + CMake + Dependencies.cmake | 版本表述精确化、实测回填、windeployqt 章节等 |
+| 静态交付配置 | `0b415e5` | 静态 Qt 单 exe 50.3 MiB,门禁回填 56 MiB | 空目录独立运行 + 真实弹窗 + ctest |
+| P1-c E2EE | `a8efa8b` | `box_crypto`(scalarmult/beforenm/secretbox)+ `e2ee_session` 计数器会话 | tweetnacl 跨实现向量逐字节对齐 |
+| deb 打包 | `8226b2b` | `packaging/build-deb.sh`(dpkg-deb 直打包)+ systemd unit + conffile | VPS 构建 233.8 KiB;dpkg 冲突保护实测 |
+| P3-a hub | `72636bc` | HTTP API 五件套 + WS 双端 + scrypt 登录 + 会话存储 + `--init-config` + 限速/CSP | ctest 11/11、HTTP 10 轮、Node WS 端到端 9/9 |
+| **P4-a 进行中** | (未提交,见 §3) | gateway 出站 hub 客户端 + UI 真实状态接线 | 12/13 测试过,live 测试编译卡住 |
+
+提交栈(main,8 个 commit,均未 push):
+```
+(HEAD, WIP)  P4-a gateway hub client —— 部分文件已改未提交,建议先 commit WIP
+72636bc  P3-a: real hub service
+e39a7fa  Fix GCC warnings surfaced by the VPS deb build
+8226b2b  Add plain dpkg-deb packaging for the hub
+a8efa8b  P1-c: E2EE v2 + tweetnacl golden vectors
+0b415e5  Verify static delivery config end-to-end; size gate 56 MiB
+5b37d23  Docs: Qt version + windeployqt
+1d0cf8a  Qt Widgets gateway config UI + static-Qt build path
+f11dc93  ← 远端 main 在这里
+```
 
 ---
 
-## 2. 当前工作树（**最重要**）
+## 2. 后端任务安排(按优先级,接手后照此推进)
 
-```
-HEAD  = 本轮收尾 commit（见 git log）
-  1d0cf8a  Add Qt Widgets gateway config UI and static-Qt delivery build path
-  5b37d23  Docs: correct installed Qt version to 6.11.2 …, document windeployqt …
-  <本轮第3个 commit>  Static delivery config verified: size gate 56 MiB …
-tag   0.0.1（pre-release，指向 f11dc93，不含 Qt UI）
-remote origin  git@github.com:dchen8525-dev/D-work-orca-web-cpp.git
-```
+### 🔴 P4-a 收尾(当前任务,预计 <1 小时)
+1. 修 `gateway/net/hub_client.cpp:144` 的编译错误(详见 §3.2)。
+2. 构建 `orca_hub_client_live_tests` 并跑通(回环 hub fixture:hello→welcome、
+   ping→pong、request→null 桥的 orca_unavailable 错误回程、断线重连二次 hello)。
+3. 全套 ctest 13/13 + 交付回归(build.ps1 exit 0;注意动态 Qt 门禁 8 MiB 是否被
+   beast 推爆,超了就按静态门的先例实测回填)。
+4. 手工冒烟:配一个真 hub 地址(本地跑 `orca-server` + `--init-config`)启动
+   gateway 窗口,确认状态卡 hubConnected 变真。
+5. commit(信息里写清 hub-link.ts 对齐点),**不 push**。
 
-**远端 `main` 仍是 `f11dc93`（没有任何 Qt UI），三个本地 commit 都没 push**——
-是否 push 由用户决定。换机器 clone 依然看不到全部 UI 与交付验证成果。
+### 🟠 P4-b + P2:Orca JSON-RPC 桥(让 orcaState 卡片变真)
+1. 读原项目 `src/gateway/orca/rpc-client.ts` + `agent-session.ts` + `local-pairing.ts`,
+   实现 C++ `OrcaBridge` 真实版(loopback 连接桌面 Orca,E2EE v2 会话已就绪于 P1-c)。
+2. `orca-state` 变更事件推送上 hub(hub_client.cpp 的 `handleBridgeEvent` 已留好 P2 挂点)。
+3. 配对码解析(`gateway/ui/pairing.cpp` 已有)+ device token 接入。
+
+### 🟡 P5:零构建前端
+`web/` 只有方案文档。按 `web/README.md` 的硬约束写 `index.html`+ES modules+
+`styles.css`(复用原 1783 行 CSS);server 侧静态文件服务已就绪(http_app serveStatic)。
+
+### 🟡 P6:打包/发布/切换
+1. **VPS 重打 deb**(P3-a 代码后的版本):`git archive HEAD | ssh tar` →
+   `setup-deps.sh` → `build-deps` → `ORCA_VERSION=0.0.1 bash packaging/build-deb.sh` →
+   scp 回 `dist/`。流程已验证(见 §5)。
+2. **VPS 切换演练**(危险!):备份 `/etc/orca-web/server.json` + `domain.txt` →
+   stop 旧 `orca-web-server 0.1.5` → dpkg -i 新包 → enable → 联调。**旧包是生产环境,
+   切换前必须用户点头**。
+3. release.yml 静态流水线首跑;产物命名 `orca-gateway-<版本>-windows-amd64.exe` +
+   `orca-server-<版本>-linux-amd64.deb` + `.sha256`。
+4. LGPLv3 合规确认(静态 Qt);wss 证书加载(OpenSSL 默认不读 Windows 根证书库,
+   见 `hub_client.cpp` 的注释)。
+
+### 🟢 随时
+- **push**:8 个 commit 全在本地,远端 main 是 P0 骨架。push 后 CI 会首跑静态流水线。
+- 三个构建目录策略统一(build/ 交付、build-ui/ 动态 Qt 验证、build-noqt/ 骨架)。
 
 ---
 
-## 3. 环境与可复现命令
+## 3. P4-a 交接点(接手第一件事)
 
-### 3.1 环境事实（本轮更新）
+### 3.1 已写完的文件(全部可编译,除 §3.2 那一处)
 
-| 项 | 值 |
+| 文件 | 状态 |
 |---|---|
-| 静态 triplet | `x64-windows-static` **已装齐**：openssl / nlohmann-json / libsodium / boost-beast / qtbase **6.11.3**（2026-11-07，qtbase 源码编译 22 分钟，二进制缓存已回填） |
-| 动态 triplet | `x64-windows` 保持 81 包（动态 Qt **6.11.2**，10-31 装）——注意 host(6.11.2) 与静态 port(6.11.3) 版本差是 §4 坑 3/4 的根源 |
-| 版本表述口径 | **动态 6.11.2 / 静态 6.11.3**；旧文档笼统写 6.11.3 或 6.11.2 都不准确，已按此口径修正 |
-| vcpkg 本地补丁 | `D:\work\vcpkg\scripts\toolchains\windows.cmake` 末尾有 `[orca-cpp local patch]` 块（仅静态 triplet 生效，见 §4 坑 3）；**换 vcpkg 目录或 `vcpkg update` 后需检查该补丁是否还在** |
-| 交付构建产物 | `build/gateway/Release/orca-gateway.exe` = 52,764,160 B；`--version` = `orca-gateway 0.0.1` |
-| 三个构建目录 | `build/` 已重建为**交付配置**（静态）；`build-ui/` 动态验证配置仍在（exe 旁有 windeployqt 部署）；`build-noqt/` 无 Qt CLI 骨架 |
-| SSH 隧道 | `ssh -i ~/.ssh/id_ed25519 -D 1080 -N root@144.34.186.164`（VPS，Ubuntu 26.04；本机公钥已装，密钥免密；**VPS 密码仅会话内用过一次，未写进任何文件**） |
+| `gateway/net/hub_link_core.{hpp,cpp}` | ✅ 纯逻辑:hello 构造、下行帧决策(pong/日志/4003/转发)、backoff(500ms→30s±20%)、静默 75s。**单测已过** |
+| `gateway/include/orca/gateway/net/orca_bridge.hpp` | ✅ 接口 + `NullOrcaBridge`(P4-a 占位:request 抛 `orca_unavailable`) |
+| `gateway/include/orca/gateway/net/hub_client.hpp` + `gateway/net/hub_client.cpp` | ⚠️ 逻辑完成,144 行编译错(见 §3.2) |
+| `gateway/ui/runtime_status_provider.hpp` | ✅ AdminStatus 用真实 HubClient snapshot |
+| `gateway/ui/config_store.{hpp,cpp}` | ✅ 新增 `gatewayId`(文件键或主机名,`orca::hostName()`) |
+| `gateway/ui/main_window.{hpp,cpp}` | ✅ 新增带 StatusProvider 的 ctor 重载(旧签名保留) |
+| `gateway/main.cpp` | ✅ `ORCA_HAVE_HUB_CLIENT` 门控:配置了 serverUrl+key 就起 worker 线程 |
+| `gateway/CMakeLists.txt` | ✅ net 源按 beast 有无条件编译 |
+| `tests/unit/hub_link_core_test.cpp` | ✅ **已通过** |
+| `tests/unit/hub_client_live_test.cpp` | ⚠️ 依赖 §3.2;回环 hub fixture(纯 beast 服务端)已写好 |
 
-### 3.2 重新构建交付配置（已验证可跑通）
+### 3.2 卡点:`hub_client.cpp:144` C2672
 
-```powershell
-# 依赖已装齐，setup-deps 秒过；全新机器才需要重跑（qtbase 22 分钟 + 缓存）
-.\scripts\setup-deps.ps1
-.\scripts\build.ps1 -Version 0.0.1 -RequireNetworkDeps -RequireQt
-# 成功标志：Qt6 Widgets: ON (static=ON)、[orca-size] verdict : OK、100% tests passed (7/7)
 ```
-
-### 3.3 单 exe 独立验证（已验证）
-
-```powershell
-Copy-Item build\gateway\Release\orca-gateway.exe D:\任意空目录\
-& D:\任意空目录\orca-gateway.exe --version     # orca-gateway 0.0.1
-Start-Process D:\任意空目录\orca-gateway.exe   # 弹窗「orca 网关管理」
+socket->async_connect(results, [this, socket](boost::system::error_code connectEc,
+                              const asio::ip::tcp::endpoint&) { ... });
 ```
+boost 1.90 报 "async_connect: 未找到匹配的重载函数"(results-range 版本与该 lambda
+签名不匹配)。**三个备选修法,推荐 ①**:
+1. **改同步连接**(最稳):worker 线程本来就是用来阻塞的——
+   `boost::system::error_code ec; socket->connect(*results.begin(), ec);`
+   失败走 finishAttempt,成功后 continue 走 TLS/ws 握手。同步 connect 也顺手解决
+   了连接超时问题(tcp_stream 不再用,见下)。
+2. 单端点 + 完整签名:`socket->async_connect(endpoint, [](ec){})` 且 lambda 签名
+   必须恰好 `void(boost::system::error_code)`(不带 endpoint)。
+3. `asio::async_connect(*socket, results, handler)` 自由函数版本(handler 签名
+   `void(ec, endpoint_type)`)。
 
-### 3.4 动态验证配置（快速迭代 UI 用，非发布配置）
+**注意:连接层已从 tcp_stream 换回裸 `asio::ip::tcp::socket`**——beast tcp_stream 的
+`expires_after()` 会在 read 路径重排超时的同时**中止在途的 write**(实测:
+handshake 后 hello 写入立刻 operation_aborted)。静默检测现在完全由 25s ping +
+75s 静默检查承担(与 TS 版一致),读路径无超时。若有人想恢复 tcp_stream 超时,
+必须接受这个语义。
 
-```powershell
-.\scripts\build.ps1 -Triplet x64-windows -DynamicQt -RequireQt
-# build-ui/ 目录已 windeployqt 部署过，可直接跑；清目录后按 docs/BUILD.md §windeployqt 重做
-```
-
----
-
-## 4. 本轮踩过的坑（接手前必读）
-
-| # | 现象 | 根因 | 处理 |
-|---|---|---|---|
-| 1 | vcpkg 直连 GitHub 40 KB/s，cmake/PowerShell 工具链下载要几十分钟 | 本机网络 | VPS SSH SOCKS 隧道 + `ALL_PROXY=socks5h://127.0.0.1:1080 HTTPS_PROXY=socks5h://…`（只设大写，防 MSB6001）；vcpkg 打印 `Using %HTTP(S)_PROXY%` 即生效 |
-| 2 | TaskStop 杀后台 PowerShell 后，vcpkg.exe 成孤儿继续占锁 | 外壳死了子进程还在 | `Get-Process vcpkg \| Stop-Process -Force`；锁在 `installed\vcpkg\vcpkg-running.lock`（**不是** buildtrees 那个） |
-| 3 | qtbase 静态 configure 报 `Could not find ... Qt6CoreTools ... 6.11.2 not compatible with 6.11.3` | 静态 port 要同版本 host 工具；host 动态 qtbase 是 10-31 装的 6.11.2 | **port 侧**：vcpkg `windows.cmake` 补丁设 `QT_NO_PACKAGE_VERSION_CHECK`（moc/rcc 跨 patch 版兼容，省去重编动态 Qt 的 1-2h） |
-| 4 | 交付 configure 仍报 Qt6 Widgets OFF（同款版本错误，但发生在消费侧） | **windows.cmake 只在 port 构建时被链入**（port 显式传 `VCPKG_CHAINLOAD_TOOLCHAIN_FILE`），消费者构建根本不加载它 | **消费者侧**：`cmake/Dependencies.cmake` 在 `find_package(Qt6)` 前设普通变量 `QT_NO_PACKAGE_VERSION_CHECK`（带注释；版本一致的环境如 CI 是 no-op） |
-| 5 | 体积门禁失败：52,764,160 > 25,165,824 | 24 MiB 是估算，没算**静态 ICU**（约 25-30 MB，vcpkg qtbase 默认 feature） | 门禁回填 56 MiB；瘦身方案（裁 `-icu`）写入文档，需与 CI 同步才做 |
-| 6 | 用户打断前台命令会连带杀掉同 shell 树里的后台进程（zstd 假死、隧道断） | 进程组 | 长任务用 Bash 工具的 run_in_background（独立任务），不要用 `&` 挂在前台 shell 里 |
-
----
-
-## 5. 未完成 / 风险（分层，已按第一轮框架更新）
-
-**致命（影响能否交付）**
-1. 三个 commit **未 push**：远端 `main` 仍无 UI、无交付验证成果；push 与否由用户决定。
-2. CI/release workflow 的静态 Qt 流水线**仍未实跑**（本机首跑已通过，CI 侧理论风险大幅降低，但没验证过；release.yml 的产物名/门禁与本地一致，首次 release 前要盯一次）。
-
-**重要（影响功能真实度）**
-3. 窗口仍是**骨架数据**：`hubConnected=false`、`orcaState=disconnected` 硬编码；**P3-a hub 已落地**（见 PROTOCOL.md），但 gateway 侧的后台网络运行时（P4）与真机 Orca 对接（P2）仍未实现——把窗口的 `LocalStatusProvider` 换成真实状态源是 P4 的一部分。
-4. **P1-c 已完成（2026-11-07）**：`box_crypto` + `e2ee_session`，tweetnacl 跨实现向量逐字节对齐。
-5. **P3-a 已完成（2026-11-07）**：hub 真实服务（boost-beast 单线程）——HTTP API 五件套、WS /gateway + /client 双端、scrypt 登录（Node 向量互通）、会话存储、`--init-config`、IP 限速、CSP/静态文件；Node WS 端到端冒烟 9/9，ctest 11/11。**注意：`orcaserver` 体积涨到 5.9 MiB（beast），8 MiB 门禁仍 OK；`deb ≤ 10 MiB` 重新打包时需复测**。
-6. **VPS 上跑着生产 hub**：包 `orca-web-server 0.1.5`（Bun 版），unit `orca-web.service` active，生产网关会连入。C++ deb 与它同名同路径，**切换日之前禁止在生产 VPS dpkg -i / stop**；P3-a 的 C++ hub 尚未经真实 gateway 客户端联调（P4 之后的切换演练才做）。
-7. **deb 产物**（2026-11-07）：`dist/orca-server-0.0.1-linux-amd64.deb` 是 **P0 骨架版**；P3-a 代码落地后需在 VPS 重新构建（git archive → build-deb.sh，流程已验证）。
-8. 静态 Qt 的 **LGPLv3 可重链接义务**仍未确认（发布前必须处理）。
-6. 全链路真实联调（用户定的验收标准）尚未开始；`web/` 零构建静态页未实现（P5）。
-
-**建议（清理项）**
-7. 静态产物瘦身：裁 qtbase `-icu` feature 可省约 25-30 MB（50.3 → ~25 MiB 量级），**必须与 CI 同步改**；是否值得由用户定。
-8. 三个构建目录命名/清理策略仍未统一（`build/` 现在是交付配置，`build-ui/` 动态验证，`build-noqt/` 骨架）。
-9. 本机 vcpkg 的 `windows.cmake` 补丁是机器本地的，`vcpkg update` 或换目录会丢；已在补丁处留注释说明。
+### 3.3 §3.2 修完后的验证链
+1. `cmake --build build --config Release --target orca_hub_client_live_tests`
+2. 直接跑 exe(日志前缀 `[client]`,20s 内应打全 4 个 check);
+   ctest 单跑:`ctest -R hub_client_live -C Release`
+3. 全套 ctest 13/13;交付回归 build.ps1(**盯动态 Qt 门禁 8 MiB**,gateway 现在
+   带 beast ≈ 6+ MiB,超门禁就把动态分支的 `ORCA_GATEWAY_MAX_BYTES` 按实测回填,
+   先例见静态分支 56 MiB 的注释写法)
+4. UI 冒烟:本地起 orca-server(--init-config 拿密码),gateway.json 填
+   serverUrl=ws://127.0.0.1:8788/gateway + gatewayKey,启动窗口看 hubConnected 卡片
+5. commit + 更新本文件
 
 ---
 
-## 6. 建议的下一步（按此顺序）
-
-1. **push 三个本地 commit**（用户决定时机；push 后 CI 会第一次实跑静态流水线，盯 ci.yml）。
-2. ~~P1-c~~ **已完成**（box_crypto + e2ee_session + 跨实现向量，ctest 8/8）。
-3. **P3**：hub 真实服务（HTTP-WS-hub）。动手前先对齐原项目 hub 的 TS 实现（`D:\work\orca-web/src/`，只读）；注意生产 VPS 正跑旧版 0.1.5，切换是 P3 完成后的独立动作。
-3. **P3 / P4 / P2**：server HTTP-WS-hub、gateway 后台网络运行时、Orca JSON-RPC；把 `StatusProvider` 从 `LocalStatusProvider` 换成真实状态源。
-4. **P5 / P6**：零构建前端、deb/systemd/Windows 自启、release 产物、全链路联调。
-5. **发布前**：LGPLv3 合规、（可选）ICU 裁剪瘦身、体积门禁再收紧到实测+小余量、产物命名统一。
-
----
-
-## 7. 关键文件索引（本轮新增/改动）
+## 4. 关键文件索引(P3/P4 新增)
 
 | 路径 | 作用 |
 |---|---|
-| `cmake/Dependencies.cmake` | **本轮改**：`find_package(Qt6)` 前设 `QT_NO_PACKAGE_VERSION_CHECK`（消费者侧版本差放行，带注释） |
-| `gateway/CMakeLists.txt` | **本轮改**：静态分支门禁 24 MiB → 56 MiB（实测注释）；`if(TARGET Qt6::QWindowsIntegrationPlugin)` 已在静态构建中确认通过 |
-| `scripts/{setup-deps,build}.ps1` | 未改；本机均实跑通过 |
-| `D:\work\vcpkg\scripts\toolchains\windows.cmake` | **机器本地补丁**（port 侧放行版本差）；换 vcpkg 会丢 |
-| `docs/{ARCHITECTURE,BUILD,DEPENDENCIES}.md`、`README.md` | 本轮按实测更新（版本口径、体积、验证状态） |
+| `server/`(include/orca/server + src) | hub:server_config / session_store / hub_core / http_app / server_runner |
+| `gateway/net/` + `gateway/include/orca/gateway/net/` | hub_link_core(纯逻辑)/ hub_client(beast 客户端)/ orca_bridge(接口+null) |
+| `gateway/ui/runtime_status_provider.hpp` | P4 状态源(Qt 窗口用) |
+| `common/src/crypto/scrypt.cpp` | 登录密码哈希(与 passwords.ts 格式互通) |
+| `tests/vectors/p1c-vectors.json` / `p3-vectors.json` | P1-c / P3 金标准向量 |
+| `packaging/build-deb.sh` + `packaging/deb/` | deb 直打包(VPS 已验证) |
+| `docs/PROTOCOL.md` §P1-c/P3-a | 逐模块对齐表与冒烟记录 |
 
 ---
 
-## 8. 约束（不要做）
+## 5. 环境事实(累计验证)
 
-- 不要恢复 `127.0.0.1:8790` 的 HTML 管理页，不要加「检查更新」/自更新（用户已明确删除）。
-- **不要把 VPS 凭据写进仓库、文档、脚本、日志或任何落盘文件**；本轮仅会话内临时使用（askpass 即用即删），随后已配好 SSH 密钥免密，后续一律密钥登录。
-- 不要改 `D:\work\orca-web`；它是只读参考。
-- 不要绕过「编译失败但 ctest 跑旧二进制」的假绿门禁：构建必须先判断 BUILD_EXIT（build.ps1 已内置 throw）。
-- 新增依赖前先说明用途与影响，由用户决定。
+- **本机**:VS 18 / MSVC 19.51,VS cmake(`.../Common7/IDE/.../CMake/bin/cmake.exe`,
+  不在 Git Bash PATH);vcpkg `D:\work\vcpkg`(x64-windows-static 全量 + x64-windows
+  含 boost-beast);构建目录 build/(交付)/ build-ui/(动态验证)/ build-noqt/。
+- **代理坑**:MSBuild 对大小写重复代理变量抛 MSB6001 —— 只设大写;vcpkg 直连
+  GitHub 40KB/s,走 VPS SOCKS 隧道 1MB/s(`ssh -i ~/.ssh/id_ed25519 -D 1080 -N
+  root@144.34.186.164`,密钥免密已配好;**VPS 密码绝不落盘**)。
+- **TaskStop 杀后台 PowerShell 时 vcpkg 子进程会变孤儿持锁**:杀
+  `Get-Process vcpkg` + 删 `D:\work\vcpkg\installed\vcpkg\vcpkg-running.lock`。
+- **VPS**(144.34.186.164,Ubuntu 26.04,2C/1G/13G):跑着**生产 hub**
+  `orca-web-server 0.1.5`(Bun 版,unit `orca-web.service` active,生产网关会连入)。
+  C++ deb 与它同名同路径,**切换日之前禁止在生产 VPS dpkg -i / stop**。
+  `/root/orca-build` 有源码副本;构建依赖已装好。
+- 已缓存的大下载:cmake-4.4.4、PowerShell-7.6.9、qtbase-6.11.3、openssl-3.6.5
+  均在 `D:\work\vcpkg\downloads`。
+
+---
+
+## 6. 约束(不要做)
+
+- 不要恢复 `127.0.0.1:8790` 的 HTML 管理页,不要加「检查更新」/自更新。
+- 不要把 VPS 凭据写进仓库、文档、脚本、日志或记忆;SSH 一律密钥免密。
+- 不要改 `D:\work\orca-web`(只读参考)。
+- 不要绕过「编译失败但 ctest 跑旧二进制」的假绿门禁:构建先看 BUILD_EXIT
+  (build.ps1 已内置 throw)。
+- 新增依赖前先说明用途与影响,由用户决定。
+- **生产 VPS 上的旧 hub 在切换日之前不许动**(dpkg -i / systemctl stop 都不行)。

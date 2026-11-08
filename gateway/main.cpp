@@ -10,6 +10,12 @@
 #ifndef ORCA_NO_QT
 #include "ui/main_window.hpp"
 
+#ifdef ORCA_HAVE_HUB_CLIENT
+#include <orca/gateway/net/hub_client.hpp>
+#include <orca/gateway/net/orca_bridge.hpp>
+#include "ui/runtime_status_provider.hpp"
+#endif
+
 #include <QApplication>
 #include <QTimer>
 #include <QtGlobal>
@@ -94,7 +100,31 @@ int main(int argc, char** argv) {
     QApplication::setApplicationName(QStringLiteral("orca-gateway"));
     QApplication::setOrganizationName(QStringLiteral("orca-web"));
 
-    orca::ui::MainWindow window(config);
+#ifdef ORCA_HAVE_HUB_CLIENT
+    // P4: dial the hub in a worker thread once the config has the address and
+    // key; the window's status cards read the live snapshot every 3 s.
+    std::shared_ptr<orca::gateway::HubClient> hubClient;
+    {
+        orca::ui::ConfigStore store(config);
+        const auto file = store.read();
+        if (!file.serverUrl.empty() && !file.gatewayKey.empty()) {
+            hubClient = std::make_shared<orca::gateway::HubClient>(
+                file.serverUrl, file.gatewayKey, file.gatewayId,
+                std::make_unique<orca::gateway::NullOrcaBridge>(),
+                [](const std::string& message) { orca::logInfo("hub: " + message); });
+            hubClient->start();
+            orca::logInfo("hub link started: " + file.serverUrl);
+        }
+    }
+#endif
+
+    std::unique_ptr<orca::ui::StatusProvider> provider;
+#ifdef ORCA_HAVE_HUB_CLIENT
+    if (hubClient) {
+        provider = std::make_unique<orca::ui::RuntimeStatusProvider>(config, hubClient);
+    }
+#endif
+    orca::ui::MainWindow window(config, std::move(provider));
     window.show();
 #if defined(_WIN32) && !defined(ORCA_NO_QT)
     hideConsoleWindow();

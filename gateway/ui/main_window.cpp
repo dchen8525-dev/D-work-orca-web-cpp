@@ -62,9 +62,14 @@ QLabel* makeValue(QWidget* parent, const QString& text = QString()) {
 }  // namespace
 
 MainWindow::MainWindow(std::filesystem::path configPath, QWidget* parent)
+    : MainWindow(configPath, nullptr, parent) {}
+
+MainWindow::MainWindow(std::filesystem::path configPath, std::unique_ptr<StatusProvider> provider,
+                       QWidget* parent)
     : QMainWindow(parent),
       store_(configPath),
-      provider_(std::make_unique<LocalStatusProvider>(configPath)) {
+      provider_(provider ? std::move(provider)
+                          : std::make_unique<LocalStatusProvider>(configPath)) {
     buildUi();
     refresh();
     timer_ = new QTimer(this);

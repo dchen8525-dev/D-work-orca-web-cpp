@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
 
 namespace orca {
 
@@ -14,5 +15,8 @@ std::filesystem::path defaultGatewayLogPath();     // %APPDATA%/orca-web/gateway
 std::filesystem::path defaultServerConfigPath();   // /etc/orca-web/server.json (Linux)
 std::filesystem::path defaultSessionStorePath();   // /var/lib/orca-web/sessions.json (Linux)
 std::filesystem::path defaultStaticDir();          // /opt/orca-web/web (Linux)
+
+// The machine hostname, for the default gatewayId (apps/gateway config.ts).
+std::string hostName();
 
 }  // namespace orca

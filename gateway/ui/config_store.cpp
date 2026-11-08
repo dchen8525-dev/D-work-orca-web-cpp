@@ -2,6 +2,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <orca/platform/paths.hpp>
+
 #include <algorithm>
 #include <cctype>
 #include <fstream>
@@ -90,6 +92,7 @@ ConfigStore::ConfigStore(std::filesystem::path path) : path_(std::move(path)) {}
 
 ConfigSnapshot ConfigStore::read() const {
     ConfigSnapshot snapshot;
+    snapshot.gatewayId = orca::hostName();
     snapshot.configPath = path_.string();
     std::error_code ec;
     snapshot.exists = std::filesystem::exists(path_, ec);
@@ -100,6 +103,7 @@ ConfigSnapshot ConfigStore::read() const {
         const json root = json::parse(stripBom(snapshot.raw));
         snapshot.serverUrl = stringField(root, "serverUrl");
         snapshot.gatewayKey = stringField(root, "gatewayKey");
+        snapshot.gatewayId = stringField(root, "gatewayId");
         loadPairing(root, snapshot.orca);
     } catch (const std::exception& error) {
         snapshot.error = error.what();

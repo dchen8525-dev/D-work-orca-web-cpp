@@ -77,6 +77,33 @@ target_link_libraries(orca_server_session_store_tests PRIVATE
     orca_common nlohmann_json::nlohmann_json)
 add_test(NAME server_session_store COMMAND orca_server_session_store_tests)
 
+# P4: gateway-side hub link. The pure core is dependency-free; the live test
+# needs Beast and dials a loopback hub fixture over a real socket.
+add_executable(orca_hub_link_core_tests
+    unit/hub_link_core_test.cpp
+    ${CMAKE_SOURCE_DIR}/gateway/net/hub_link_core.cpp)
+target_include_directories(orca_hub_link_core_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/unit
+    ${CMAKE_SOURCE_DIR}/gateway/include)
+target_link_libraries(orca_hub_link_core_tests PRIVATE orca_common nlohmann_json::nlohmann_json)
+add_test(NAME hub_link_core COMMAND orca_hub_link_core_tests)
+
+if(ORCA_BEAST_INCLUDE_DIR)
+    add_executable(orca_hub_client_live_tests unit/hub_client_live_test.cpp
+        ${CMAKE_SOURCE_DIR}/gateway/net/hub_link_core.cpp
+        ${CMAKE_SOURCE_DIR}/gateway/net/hub_client.cpp)
+    target_include_directories(orca_hub_client_live_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/unit
+        ${CMAKE_SOURCE_DIR}/gateway/include
+        ${ORCA_BEAST_INCLUDE_DIR})
+    target_link_libraries(orca_hub_client_live_tests PRIVATE
+        orca_common orca_protocol nlohmann_json::nlohmann_json OpenSSL::SSL Threads::Threads)
+    if(WIN32)
+        target_compile_definitions(orca_hub_client_live_tests PRIVATE _WIN32_WINNT=0x0A00)
+    endif()
+    add_test(NAME hub_client_live COMMAND orca_hub_client_live_tests)
+endif()
+
 add_test(NAME server_version COMMAND orca-server --version)
 set_tests_properties(server_version PROPERTIES
     PASS_REGULAR_EXPRESSION "orca-server ")
