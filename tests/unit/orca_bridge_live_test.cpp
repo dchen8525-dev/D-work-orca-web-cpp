@@ -42,17 +42,6 @@ namespace {
 
 constexpr const char* kDeviceToken = "test-device-token";
 
-std::string hexId() {
-    const auto bytes = orca::protocol::randomBytes(8);
-    static constexpr char kHex[] = "0123456789abcdef";
-    std::string out;
-    for (const auto byte : *bytes) {
-        out.push_back(kHex[byte >> 4]);
-        out.push_back(kHex[byte & 0xf]);
-    }
-    return out;
-}
-
 // Desktop Orca, reduced to the parts the bridge exercises.
 class OrcaFixture : public std::enable_shared_from_this<OrcaFixture> {
 public:
