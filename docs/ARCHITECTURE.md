@@ -52,7 +52,7 @@ packaging/  deb / windows / caddy
 | P3 | server 全量 | 本地集成 + `/api/health` |
 | P4 | gateway 后台全量（hub link / Orca bridge / 订阅重放） | mock hub + 真实 Orca，断线重连不泄漏 Orca socket |
 | P4-UI | Qt Widgets 配置窗口骨架 | **已完成**：动态 Qt 编译 + offscreen smoke，`gateway_core` 单测，7/7 CTest |
-| P5 | 零构建原生前端 | 390×844 下完整写入周期 |
+| P5 | 零构建原生前端 | **已完成**：390×844 下完整写入周期（回复/停止/新建/回答/重连） |
 | P6 | 打包 + 全链路联调 | 真实 VPS + Orca + 手机端到端 |
 
 ## 已知风险
@@ -62,7 +62,9 @@ packaging/  deb / windows / caddy
 2. E2EE v2 transcript 是 24 个定长字段拼接（1 + 11 + 12）、header 42B / nonce 24B、双向独立 uint64 计数器；
    偏移错误表现为"对端无响应"，必须靠 P1 的固定向量测试定位。
 3. Windows 上 OpenSSL 默认不加载系统根证书，gateway 的 WSS 需要显式 CA bundle 或注入系统 store。
-4. 无框架前端的状态同步（输入框草稿、`<details>` 展开态、审批局部状态、markdown XSS）是 P5 主要工作量。
+4. 无框架前端的状态同步（输入框草稿、`<details>` 展开态、审批局部状态、markdown XSS）：
+   P5 用「按 key 复用节点 + 签名去重」解决重绘吞点击，草稿/展开态存视图内 Map，
+   markdown 只走 DOM API（无 `innerHTML`）。
 5. 静态 CRT（`/MT`）要求 vcpkg 使用 `x64-windows-static`；混用 `x64-windows`（动态 CRT）会链接冲突。
    本机 `x64-windows`（动态 Qt 6.11.2）与 `x64-windows-static`（静态 Qt 6.11.3）均已安装。
 6. **Qt 静态构建**：`qtbase` 在 `x64-windows-static` 上从源码编译，首次约 1-2 小时；

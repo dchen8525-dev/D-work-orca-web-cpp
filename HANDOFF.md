@@ -1,6 +1,6 @@
 # HANDOFF — 当前进展交接
 
-> 生成时间:2026-11-08 11:2x GMT+8(第五轮,接同日上午的第四轮)
+> 生成时间:2026-11-08 13:3x GMT+8(第六轮,P5 完成)
 > 仓库:`D:\work\orca-cpp`(分支 `main`,远端 `git@github.com:dchen8525-dev/D-work-orca-web-cpp.git`)
 > 本文件是**当前状态的权威快照**;`README.md` 是设计说明,协议细节以 `docs/PROTOCOL.md` 为准。
 > 原项目 `D:\work\orca-web` 保持只读参考,不要改动。
@@ -9,12 +9,12 @@
 
 ## 0. 一句话状态
 
-**P4-b + P2(真实 Orca 桥)已完成并全链路验证**:E2EE v2 握手 + 密封 JSON-RPC、
-500ms→30s 退避重连、订阅回放、`orca-state`/descriptor/stream-* 推 hub;
-回环 fixture live 测试 19/19、动态 Qt ctest 14/14、静态 `build.ps1` 退出 0、
-真实本地 hub + 真实桌面 Orca 冒烟(UI:「hub 已连接 / Orca 在线 · DESKTOP-5C2U2HV」)。
-当前 HEAD `2b5dff5`,共 10 个本地 commit,**全部未 push**;远端 `main` 仍是 `f11dc93`。
-下一步 **P5 零构建前端**(见 §2)。
+**P5 零构建前端已完成并真机联调**:`web/` 是可被 hub 直接托管的 ES modules
+应用(登录/看板/任务/新建/定时/改密),真机 390×844 跑通回复、停止、建任务、
+回答 AskUserQuestion、断线重连;同时修掉静态文件服务的三个真问题(Windows
+路径、缺 Content-Type、`.webmanifest` MIME),新增 `server_http` 回归测试。
+当前 HEAD `a400bf6`(另有 HANDOFF 文档 commit),13 个本地 commit,**全部未 push**;
+远端 `main` 仍是 `f11dc93`。下一步 **P6 打包/发布/切换**(见 §2)。
 
 ---
 
@@ -28,10 +28,13 @@
 | P3-a hub | `72636bc` | HTTP API 五件套 + WS 双端 + scrypt 登录 + 会话存储 + `--init-config` + 限速/CSP | ctest 11/11、HTTP 10 轮、Node WS 端到端 9/9 |
 | P4-a hub 客户端 | `19bab95` | 出站 WS 客户端 + hello/ping/pong/request 转发 + 退避重连 + UI 真实状态接线 | live 8/8、ctest 13/13、真实 hub UI 冒烟 |
 | **P2 Orca 桥** | `2b5dff5` | `OrcaConnection`(E2EE+密封 RPC)+ `OrcaBridgeImpl`(重连/订阅回放)+ Windows 根证书 + `--local-orca` | live 19/19、ctest 14/14、真实 Orca 冒烟 |
+| **P5 零构建前端** | `a400bf6` | `web/` ES modules:看板/任务/新建/定时/登录/改密 + hub 客户端;server 静态文件三处修复 | ctest 15/15、build.ps1 退出 0、390×844 真机全流程 |
 
-提交栈(main,10 个 commit,均未 push):
+提交栈(main,13 个 commit 领先远端,均未 push):
 ```
-HEAD     P2: real Orca bridge — E2EE v2 RPC client, reconnect loop, hub orca-state
+HEAD     P5: zero-build web frontend; static assets keep their MIME type
+8a584e1  Docs: hand off P2 — Orca bridge verified, P5 is next
+2b5dff5  P2: real Orca bridge — E2EE v2 RPC client, reconnect loop, hub orca-state
 19bab95  P4-a: finish gateway hub client — WS upgrade, clean shutdown, live test
 f785e72  P4-a (WIP): gateway outbound hub client
 72636bc  P3-a: real hub service
@@ -48,10 +51,8 @@ f11dc93  ← 远端 main 在这里
 
 ## 2. 后端任务安排(按优先级,接手后照此推进)
 
-### 🟡 P5:零构建前端(下一个)
-`web/` 只有方案文档。按 `web/README.md` 的硬约束写 `index.html`+ES modules+
-`styles.css`(复用原 1783 行 CSS);server 侧静态文件服务已就绪(http_app serveStatic)。
-可用本轮 p2-smoke 的本地 hub(`127.0.0.1:8788`)直接联调登录页。
+### ✅ P5:零构建前端(已完成,见 §2.6)
+`web/` 已是可直接交付的前端;hub 的 `staticDir` 指向它即可。
 
 ### 🟢 P2 余项(不阻塞,后继任务顺手做)
 - `agentSession.*` 方法级封装(现在桥已能透传任意方法与订阅;`agent-session.ts` 里的
@@ -59,7 +60,7 @@ f11dc93  ← 远端 main 在这里
 - 配对码 UI → 配置落盘 → **不重启**换 Orca 连接(当前改配对需重启 gateway,与 TS 一致)。
 - relay 传输(`transport="relay"` + `relayHostId`)已透传,但未对真实 relay 验证。
 
-### 🟡 P6:打包/发布/切换
+### 🟡 P6:打包/发布/切换(下一个)
 1. **VPS 重打 deb**(P3-a 代码后的版本):`git archive HEAD | ssh tar` →
    `setup-deps.sh` → `build-deps` → `ORCA_VERSION=0.0.1 bash packaging/build-deb.sh` →
    scp 回 `dist/`。流程已验证(见 §5)。
@@ -72,7 +73,7 @@ f11dc93  ← 远端 main 在这里
    读 Windows ROOT/CA 库;Linux 走 OpenSSL 默认路径)。
 
 ### 🟢 随时
-- **push**:10 个 commit 全在本地,远端 main 是 P0 骨架。push 后 CI 会首跑静态流水线。
+- **push**:13 个 commit 全在本地,远端 main 是 P0 骨架。push 后 CI 会首跑静态流水线。
 - 三个构建目录策略统一(build/ 交付、build-ui/ 动态 Qt 验证、build-noqt/ 骨架)。
 
 ---
@@ -125,6 +126,57 @@ CMake:二者需 `ORCA_BEAST_INCLUDE_DIR` + `ORCA_HAVE_SODIUM`(定义 `ORCA_HAVE_
 - 静态 gateway:**59,913,728 B(57.1 MiB)**,门禁 60 MiB(P2 再增 1.16 MB:`tls_roots` + 证书)。
 - 动态 Qt exe:**1,867,776 B(1.78 MiB)**,8 MiB 门禁不变。
 
+### 2.6 P5 完成记录(接手参考)
+
+#### 2.6.1 新增文件
+
+| 文件 | 作用 |
+|---|---|
+| `web/index.html` | 唯一的 HTML;`<script type="module" src="/app.js">`,无内联脚本 |
+| `web/app.js` | 会话检查、登录/退出、路由(pushState/popstate)、HubClient 生命周期、authExpired 处理 |
+| `web/hub.js` | 浏览器 `/client` WS:欢迎/admitted、500ms→15s 退避、25s ping/75s 静默、重连后重订阅 + `reset`、`/api/session` 判 cookie 失效 |
+| `web/api.js` `web/envelope.js` `web/dom.js` `web/util.js` | 同源 JSON API、canonical-JSON mutation envelope、DOM 构造(只用 Text node/textContent)、格式化 |
+| `web/views/board.js` | 看板:project.list + worktree.ps + subscribeStatus、搜索/筛选/折叠/15s 刷新/下拉刷新、提醒 |
+| `web/views/task.js` | 任务:history tail/before、350ms 去抖 refetch、发送/停止/审批/回答/setOption、markdown |
+| `web/views/create.js` `web/views/automations.js` `web/views/auth.js` `web/views/markdown.js` | 新建任务、定时任务列表+编辑器、登录/改密、依赖零的 markdown 子集 |
+| `web/styles.css` | 原 1783 行样式原样复用,末尾只加了一条 `[hidden]{display:none!important}` |
+| `tests/unit/server_http_test.cpp` | 静态文件回归:路径解析、MIME、SPA 回退、目录穿越 |
+
+#### 2.6.2 本轮修掉的真问题
+
+| 问题 | 症状 | 修法 |
+|---|---|---|
+| **Windows 静态路径** | 所有 `/app.js`、`/styles.css` 都返回 index.html(200 但内容错) | URL 以 `/` 开头;Windows 上 `root / "/app.js"` 会落到盘符当前目录。`serveStatic` 先把前导 `/` 去掉再拼 |
+| **静态响应没有 Content-Type** | `nosniff` 下浏览器拒绝执行 module script / 应用 CSS | `server_runner` 读取文件后补 `Content-Type: <fileContentType>`;`index.html` 再补 `Cache-Control: no-store` |
+| **`.webmanifest` 被当二进制** | manifest 解析失败 | MIME 表补 `application/manifest+json` |
+| **`hidden` 被 CSS 覆盖** | 空任务的「载入更早的消息」仍然显示 | 末尾加 `[hidden]{display:none!important}` |
+| **流式重绘吞点击** | 状态帧/历史刷新整块重建 DOM,Playwright 与真机 tap 都可能落空 | 看板用签名去重 + 复用任务/项目头/新建按钮节点;任务页按 itemId 复用节点、选项面板按签名复用;状态行做成持久节点 |
+| **setOption 后标题不更新** | load() 先 paint、loadOptions() 后落地,权限 pill 仍是旧值 | `loadOptions()` 落地后补 `paintHead()`;setOption 的 finally 改 `paint()` |
+
+#### 2.6.3 验证链(已全部跑过)
+
+1. `node --input-type=module --check` 全部 12 个模块通过。
+2. `ctest -C Release` **15/15**(新增 `server_http` 11 项断言全过)。
+3. `scripts/build.ps1` 退出 0:静态 Qt 构建 + ctest 15/15 + 体积门禁;
+   `orca-server.exe` **5,946,880 B(5.8 MiB)** / 8 MiB。
+4. 真机(本地 hub `127.0.0.1:8788` + `--local-orca` 真桌面 Orca,emulate 390×844):
+   登录(错误密码/服务器离线文案)、看板真实项目与任务、搜索/筛选/折叠、
+   任务详情+载入更早、会话设置(catalog 真实拉取)、权限改为「每次都问」、
+   发送→agent 回复、停止运行中的回合、新建空任务、AskUserQuestion 选 A→提交→「已回答」、
+   定时页列表与编辑器(每天/每周/每分钟/自定义、沿用/每次新建)、改密面板、退出再登录;
+   kill hub → UI 显示断线 → 重启 hub → 自动重连并刷新(重订阅生效)。
+   控制台只有 kill 期间的 `ERR_CONNECTION_REFUSED` 与两条 a11y 提示,无 JS/CSP 报错。
+5. 测试留下一个空任务会话「仅回复“收到”」(fcp,idle)和该会话的权限改动,可随时关闭。
+
+#### 2.6.4 本地联调方法(下次照做)
+
+- `orca-server --init-config <临时>/server.json`,把 `staticDir` 改成
+  `D:/work/orca-cpp/web`(绝对路径),`sessionStorePath` 也指向临时目录。
+- `orca-gateway --config <临时>/gateway.json --local-orca`;
+  `serverUrl` 必须写全 `ws://127.0.0.1:8788/gateway`(配置读取不会自动补 `/gateway`)。
+- 浏览器 390×844 用 Chrome DevTools MCP 的 `emulate` 设 viewport(窗口
+  `resize_page` 会被最小宽度钳到 ~500);页面在 `http://127.0.0.1:8788/`。
+
 ---
 
 ## 3. P4-a 完成记录(接手参考)
@@ -170,6 +222,8 @@ retry 定时器改为成员 `retryTimer_`,可取消;删除未使用的 `kConnect
 | `common/src/crypto/scrypt.cpp` | 登录密码哈希(与 passwords.ts 格式互通) |
 | `tests/unit/hub_client_live_test.cpp` | 回环 beast hub fixture + 真实 HubClient 集成测试 |
 | `tests/unit/orca_bridge_live_test.cpp` | 回环 Orca fixture(E2EE v2)+ 真实 OrcaBridgeImpl 集成测试 |
+| `web/` | 零构建前端;`staticDir` 指到这里即可,无 npm/Vite/React |
+| `tests/unit/server_http_test.cpp` | 静态文件路径/MIME/SPA 回退/穿越回归 |
 | `tests/vectors/p1c-vectors.json` / `p3-vectors.json` | P1-c / P3 金标准向量 |
 | `packaging/build-deb.sh` + `packaging/deb/` | deb 直打包(VPS 已验证) |
 | `docs/PROTOCOL.md` §P1-c/P3-a | 逐模块对齐表与冒烟记录 |
@@ -183,6 +237,8 @@ retry 定时器改为成员 `retryTimer_`,可取消;删除未使用的 `kConnect
   含 boost-beast + libsodium);构建目录 build/(交付)/ build-ui/(动态验证)/ build-noqt/。
 - **直接跑测试 exe 时 bash 里退出码不可靠**(控制台子进程),用 `ctest -C Release -R <name> -V`
   看结果;测试里 `std::cout` 加 `unitbuf`,崩溃时前面的 ok 行不丢。
+- **前端联调**:Chrome DevTools MCP 的 `resize_page` 受窗口最小宽度限制(~500px),
+  390×844 要用 `emulate` 的 `viewport: "390x844x3,mobile,touch"`。
 - **代理坑**:MSBuild 对大小写重复代理变量抛 MSB6001 —— 只设大写;vcpkg 直连
   GitHub 40KB/s,走 VPS SOCKS 隧道 1MB/s(`ssh -i ~/.ssh/id_ed25519 -D 1080 -N
   root@144.34.186.164`,密钥免密已配好;**VPS 密码绝不落盘**)。

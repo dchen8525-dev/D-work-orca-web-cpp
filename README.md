@@ -26,13 +26,13 @@ gateway 的配置界面**不再是 `127.0.0.1:8790` 的 HTML 管理页**，而�
 | P0 | 目录骨架、CMake 双平台构建、两个最小入口、体积门禁、CI | **已完成，本机编译 + 6/6 CTest** |
 | P1-a | 免依赖部分：纯 C++ SHA-256 / HMAC / HKDF / base64、24 字段 transcript、canonical JSON、两条 wire 帧、golden 向量 | **已完成，逐字节比对 JS 独立实现通过** |
 | P1-b | E2EE v2 免依赖切片：17 项能力集、42B header / 24B nonce / 双向计数器、明文握手帧与 strict `e2ee_ready` 校验 | **已完成，protocol 117 项断言全过** |
-| P1-c | X25519 `crypto_box_beforenm` + secretbox 封包/解包 + scrypt（需 libsodium / 静态 OpenSSL） | 待 `x64-windows-static` 依赖就位 |
-| P2 | Orca JSON-RPC + 真实 Orca 冒烟 | 待实现 |
-| P3 | server：HTTP / 静态 / 登录会话 / 两个 WS / hub 状态机 | 待实现 |
-| P4 | gateway 后台：配置 / 配对 / 两条外连 / hub 重连 | 待实现 |
+| P1-c | X25519 `crypto_box_beforenm` + secretbox 封包/解包 + scrypt | **已完成**：tweetnacl 金标准向量逐字节对齐 |
+| P2 | Orca JSON-RPC + 真实 Orca 冒烟 | **已完成**：E2EE v2 RPC、重连、订阅回放；live 19/19 |
+| P3 | server：HTTP / 静态 / 登录会话 / 两个 WS / hub 状态机 | **已完成**：ctest 覆盖 + 真连冒烟 |
+| P4 | gateway 后台：配置 / 配对 / 两条外连 / hub 重连 | **已完成**：live 8/8 + 真实 hub 冒烟 |
 | P4-UI | **Qt Widgets 配置窗口骨架**（状态、hub 配置、配对码、配置查看） | **已完成**：本机动态 Qt 编译 + offscreen smoke 通过，`gateway_core` 单测全绿 |
-| P5 | 零构建原生前端（看板 / 任务 / 审批 / 自动化） | 待实现 |
-| P6 | deb / systemd / Windows 自启 / release 产物 / 全链路联调 | 待实现 |
+| P5 | 零构建原生前端（看板 / 任务 / 审批 / 自动化） | **已完成**：390×844 全流程真机联调 |
+| P6 | deb / systemd / Windows 自启 / release 产物 / 全链路联调 | 待实现（deb 打包已验证，发布/切换未做） |
 
 P0 的 server 入口**只实现 CLI 契约与配置路径检查**，明确打印"服务尚未实现"，不伪装成可用服务。
 gateway 入口在检测到静态 Qt 未安装时会退回同样的 CLI 骨架并给出 WARNING；CI/release 用

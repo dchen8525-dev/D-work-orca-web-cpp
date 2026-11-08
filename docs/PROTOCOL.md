@@ -136,5 +136,5 @@ frame**。C++ 侧 `tests/unit/e2ee_session_test.cpp` 逐字节复现，并测会
 Node 原生 WebSocket 真连 **9/9**（hello 鉴权、welcome+orca、请求 id 重映射回程、
 订阅/流帧回程、重连 stream-reset+gateway-state+旧连接 4009）。ctest **11/11**。
 
-P3 未包含（后续）：与真机 Orca 的 E2EE 联调（P2/P4）、`/api/*` 之外任务面 API 的
-真实数据（hub 只转发，不产生）、web/ 静态页（P5）、VPS 切换演练。
+P3 未包含（后续）：与真机 Orca 的 E2EE 联调（P2/P4，已完成）、`/api/*` 之外任务面 API 的
+真实数据（hub 只转发，不产生）、web/ 静态页（P5，已完成）、VPS 切换演练（P6）。
