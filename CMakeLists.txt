@@ -49,6 +49,11 @@ message(STATUS "orca-cpp build version: ${ORCA_BUILD_VERSION}")
 include(cmake/CompilerFlags.cmake)
 include(cmake/Dependencies.cmake)
 
+# Live tests live in tests/ (a sibling directory of server/ and gateway/).
+# Their `find_package(Threads)` only defines Threads::Threads in that subtree,
+# so resolve it once at top level where every target can see it.
+find_package(Threads REQUIRED)
+
 # P1+ builds wire frames and canonical JSON. nlohmann-json is header-only and
 # already installed in vcpkg / provided by nlohmann-json3-dev on Linux; it is
 # the one dependency the project cannot compile without.
