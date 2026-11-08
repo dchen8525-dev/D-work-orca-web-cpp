@@ -149,6 +149,12 @@ private:
                 std::ostringstream data;
                 data << in.rdbuf();
                 response.body = data.str();
+                // Without a Content-Type (and with nosniff set below) browsers
+                // refuse to execute module scripts or apply stylesheets.
+                response.headers.emplace_back("Content-Type", response.fileContentType);
+                if (response.fileNoStore) {
+                    response.headers.emplace_back("Cache-Control", "no-store");
+                }
             }
         }
 

@@ -32,6 +32,7 @@ const char* contentTypeFor(const std::string& extension) {
     if (extension == ".js") return "text/javascript; charset=utf-8";
     if (extension == ".css") return "text/css; charset=utf-8";
     if (extension == ".json") return "application/json; charset=utf-8";
+    if (extension == ".webmanifest") return "application/manifest+json";
     if (extension == ".svg") return "image/svg+xml";
     if (extension == ".png") return "image/png";
     if (extension == ".ico") return "image/x-icon";
@@ -286,6 +287,10 @@ HttpResponse HttpApp::serveStatic(const std::string& pathname) const {
     // /app2 when this root is /app).
     relative = relative.lexically_normal();
     auto relativeText = relative.generic_string();
+    // A URL path always starts with "/". On Windows that is not an absolute
+    // path (no drive), so `root / "/app.js"` resolves against the drive's
+    // current directory and every asset would fall back to index.html.
+    while (!relativeText.empty() && relativeText.front() == '/') relativeText.erase(0, 1);
     while (relativeText.rfind("../", 0) == 0) relativeText = relativeText.substr(3);
     std::filesystem::path requested = (root / relativeText).lexically_normal();
     const auto rootText = root.generic_string();

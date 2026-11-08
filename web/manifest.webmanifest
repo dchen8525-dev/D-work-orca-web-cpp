@@ -1,0 +1,17 @@
+{
+  "name": "orca",
+  "short_name": "orca",
+  "description": "接管桌面 Orca 的 agent 任务",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf7f1",
+  "theme_color": "#faf7f1",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

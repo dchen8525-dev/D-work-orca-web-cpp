@@ -67,6 +67,18 @@ target_link_libraries(orca_server_hub_core_tests PRIVATE
     orca_common orca_protocol nlohmann_json::nlohmann_json)
 add_test(NAME server_hub_core COMMAND orca_server_hub_core_tests)
 
+add_executable(orca_server_http_tests
+    unit/server_http_test.cpp
+    ${CMAKE_SOURCE_DIR}/server/src/http_app.cpp
+    ${CMAKE_SOURCE_DIR}/server/src/hub_core.cpp
+    ${CMAKE_SOURCE_DIR}/server/src/session_store.cpp)
+target_include_directories(orca_server_http_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/unit
+    ${CMAKE_SOURCE_DIR}/server/include)
+target_link_libraries(orca_server_http_tests PRIVATE
+    orca_common orca_protocol nlohmann_json::nlohmann_json)
+add_test(NAME server_http COMMAND orca_server_http_tests)
+
 add_executable(orca_server_session_store_tests
     unit/server_session_store_test.cpp
     ${CMAKE_SOURCE_DIR}/server/src/session_store.cpp)
