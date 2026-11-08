@@ -77,5 +77,5 @@ packaging/  deb / windows / caddy
    port 侧在本机 vcpkg 的 `windows.cmake` 补丁）。host 与 target 版本一致时该开关无副作用。
 9. **体积门禁实测回填**：静态 Qt（vcpkg 默认 feature，含静态 ICU + OpenSSL）实测
    50.3 MiB，远超原 24 MiB 估算（ICU 主因，约 25-30 MB）。P4-a 的 beast 出站客户端再增
-   约 5.7 MiB（实测 56.0 MiB），门禁已回填 60 MiB；瘦身首选裁剪 qtbase feature
+   约 5.7 MiB，P2 Orca 桥再约 1.2 MB（实测 57.1 MiB），门禁已回填 60 MiB；瘦身首选裁剪 qtbase feature
    （先 `-icu`），CI 需同步。

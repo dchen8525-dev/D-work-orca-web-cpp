@@ -91,7 +91,8 @@ add_test(NAME hub_link_core COMMAND orca_hub_link_core_tests)
 if(ORCA_BEAST_INCLUDE_DIR)
     add_executable(orca_hub_client_live_tests unit/hub_client_live_test.cpp
         ${CMAKE_SOURCE_DIR}/gateway/net/hub_link_core.cpp
-        ${CMAKE_SOURCE_DIR}/gateway/net/hub_client.cpp)
+        ${CMAKE_SOURCE_DIR}/gateway/net/hub_client.cpp
+        ${CMAKE_SOURCE_DIR}/gateway/net/tls_roots.cpp)
     target_include_directories(orca_hub_client_live_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/unit
         ${CMAKE_SOURCE_DIR}/gateway/include
@@ -99,10 +100,35 @@ if(ORCA_BEAST_INCLUDE_DIR)
     target_link_libraries(orca_hub_client_live_tests PRIVATE
         orca_common orca_protocol nlohmann_json::nlohmann_json OpenSSL::SSL Threads::Threads)
     if(WIN32)
+        # CertOpenSystemStore in gateway/net/tls_roots.cpp.
+        target_link_libraries(orca_hub_client_live_tests PRIVATE crypt32)
+    endif()
+    if(WIN32)
         target_compile_definitions(orca_hub_client_live_tests PRIVATE _WIN32_WINNT=0x0A00)
     endif()
     add_test(NAME hub_client_live COMMAND orca_hub_client_live_tests)
 endif()
+
+if(ORCA_BEAST_INCLUDE_DIR AND ORCA_HAVE_SODIUM)
+    # P2: the real Orca bridge against a loopback fixture that speaks the E2EE
+    # v2 handshake and sealed JSON-RPC.
+    add_executable(orca_orca_bridge_live_tests unit/orca_bridge_live_test.cpp
+        ${CMAKE_SOURCE_DIR}/gateway/net/orca_rpc_client.cpp
+        ${CMAKE_SOURCE_DIR}/gateway/net/orca_bridge_impl.cpp
+        ${CMAKE_SOURCE_DIR}/gateway/net/tls_roots.cpp)
+    target_include_directories(orca_orca_bridge_live_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/unit
+        ${CMAKE_SOURCE_DIR}/gateway/include
+        ${ORCA_BEAST_INCLUDE_DIR})
+    target_link_libraries(orca_orca_bridge_live_tests PRIVATE
+        orca_common orca_protocol nlohmann_json::nlohmann_json OpenSSL::SSL Threads::Threads)
+    if(WIN32)
+        target_compile_definitions(orca_orca_bridge_live_tests PRIVATE _WIN32_WINNT=0x0A00)
+        target_link_libraries(orca_orca_bridge_live_tests PRIVATE crypt32)
+    endif()
+    add_test(NAME orca_bridge_live COMMAND orca_orca_bridge_live_tests)
+endif()
+
 
 add_test(NAME server_version COMMAND orca-server --version)
 set_tests_properties(server_version PROPERTIES

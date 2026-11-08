@@ -3,8 +3,11 @@
 #include <orca/platform/paths.hpp>
 #include <orca/version.hpp>
 
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <memory>
+#include <optional>
 #include <string>
 
 #ifndef ORCA_NO_QT
@@ -13,7 +16,11 @@
 #ifdef ORCA_HAVE_HUB_CLIENT
 #include <orca/gateway/net/hub_client.hpp>
 #include <orca/gateway/net/orca_bridge.hpp>
+#include "ui/local_orca.hpp"
 #include "ui/runtime_status_provider.hpp"
+#ifdef ORCA_HAVE_ORCA_BRIDGE
+#include <orca/gateway/net/orca_bridge_impl.hpp>
+#endif
 #endif
 
 #include <QApplication>
@@ -77,9 +84,26 @@ int main(int argc, char** argv) {
         orca::logError("配置文件不存在: " + config.string());
         return 3;
     }
+#ifdef ORCA_HAVE_HUB_CLIENT
+    // --local-orca: dev-only, reuse the pairing material the desktop Orca
+    // already persisted on this machine (apps/gateway config.ts localOrcaOptions).
+    std::optional<orca::ui::LocalOrcaPairing> localPairing;
     if (opts.localOrca) {
-        // P4: read the desktop Orca's local pairing material.
+        std::filesystem::path orcaDir = orca::appDataDir() / "orca";
+        if (const char* override = std::getenv("ORCA_WEB_LOCAL_ORCA_DIR")) {
+            if (*override != '\0') orcaDir = std::filesystem::path(override);
+        }
+        try {
+            localPairing = orca::ui::readLocalOrcaPairing(orcaDir);
+            // Never log the device token.
+            orca::logInfo("local Orca: " + localPairing->pairing.endpoint + " (" +
+                          localPairing->deviceName + ")");
+        } catch (const std::exception& error) {
+            orca::logError(error.what());
+            return 4;
+        }
     }
+#endif
 
 #ifdef ORCA_NO_QT
     // Static Qt is not installed yet: stay an honest CLI skeleton rather than
@@ -108,9 +132,33 @@ int main(int argc, char** argv) {
         orca::ui::ConfigStore store(config);
         const auto file = store.read();
         if (!file.serverUrl.empty() && !file.gatewayKey.empty()) {
+            // Pairing material: --local-orca wins over the config file, exactly
+            // like the TS gateway's loadConfig().
+            orca::ui::OrcaPairing pairing = file.orca;
+            if (localPairing) pairing = localPairing->pairing;
+
+            std::unique_ptr<orca::gateway::OrcaBridge> bridge;
+#ifdef ORCA_HAVE_ORCA_BRIDGE
+            if (!pairing.endpoint.empty() && !pairing.deviceToken.empty() &&
+                !pairing.hostPublicKeyB64.empty()) {
+                orca::gateway::OrcaBridgeOptions options;
+                options.endpoint = pairing.endpoint;
+                options.deviceToken = pairing.deviceToken;
+                options.hostPublicKeyB64 = pairing.hostPublicKeyB64;
+                auto impl = std::make_unique<orca::gateway::OrcaBridgeImpl>(
+                    std::move(options),
+                    [](const std::string& message) { orca::logInfo("orca: " + message); });
+                impl->start();
+                bridge = std::move(impl);
+            }
+#endif
+            if (!bridge) {
+                bridge = std::make_unique<orca::gateway::NullOrcaBridge>();
+                orca::logWarn("Orca 尚未配对：hub 请求会返回 orca_unavailable");
+            }
+
             hubClient = std::make_shared<orca::gateway::HubClient>(
-                file.serverUrl, file.gatewayKey, file.gatewayId,
-                std::make_unique<orca::gateway::NullOrcaBridge>(),
+                file.serverUrl, file.gatewayKey, file.gatewayId, std::move(bridge),
                 [](const std::string& message) { orca::logInfo("hub: " + message); });
             hubClient->start();
             orca::logInfo("hub link started: " + file.serverUrl);

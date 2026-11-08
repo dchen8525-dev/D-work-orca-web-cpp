@@ -39,6 +39,8 @@ public:
         std::string hubUrl;
         std::string lastError;
         int attempts = 0;
+        std::string orcaState = "disconnected";
+        std::string orcaMachineName;
     };
 
     HubClient(std::string hubUrl, std::string gatewayKey, std::string gatewayId,

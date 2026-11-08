@@ -2,15 +2,16 @@
 
 #include <nlohmann/json.hpp>
 
+#include <functional>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
 namespace orca::gateway {
 
 // Bridge between the hub link and the desktop Orca connection
-// (apps/gateway/src/orca-bridge.ts). The real JSON-RPC bridge is P2; P4-a
-// ships a null implementation so the hub link speaks the full protocol while
-// honestly reporting the Orca side as disconnected.
+// (apps/gateway/src/orca-bridge.ts). NullOrcaBridge keeps the hub link honest
+// before pairing; OrcaBridgeImpl (P2) is the real reconnecting implementation.
 
 enum class OrcaState { kConnecting, kConnected, kDisconnected };
 
@@ -41,36 +42,54 @@ struct BridgeEvent {
 
 class OrcaBridge {
 public:
+    using EventSink = std::function<void(const BridgeEvent& event)>;
+    // Exactly one completion per request, on the bridge's worker thread.
+    using RequestDone = std::function<void(std::optional<nlohmann::json> result,
+                                           std::optional<LinkError> error)>;
+
     virtual ~OrcaBridge() = default;
+
+    // Events (state changes, stream frames) are delivered on the bridge's own
+    // worker thread; the hub link marshals them onto its io_context.
+    virtual void setEventSink(EventSink sink) = 0;
 
     virtual OrcaState state() const = 0;
     // The Orca app descriptor (appVersion, machineName, ...); null when absent.
     virtual nlohmann::json descriptor() const = 0;
-    // Synchronous request into Orca; throws LinkError on failure.
-    virtual nlohmann::json request(const std::string& method, const nlohmann::json& params,
-                                   std::uint64_t timeoutMs) = 0;
+    // Asynchronous request into Orca; never blocks the caller.
+    virtual void request(const std::string& id, const std::string& method,
+                         const nlohmann::json& params, std::uint64_t timeoutMs,
+                         RequestDone done) = 0;
     virtual void subscribe(const std::string& id, const std::string& method,
                            const nlohmann::json& params) = 0;
     virtual void unsubscribe(const std::string& id) = 0;
     // The hub re-issues subscriptions after reconnecting; drop ours so nothing
     // stale streams.
     virtual void unsubscribeAll() = 0;
+    // Join the bridge worker; safe to call from the owner's destructor.
+    virtual void shutdown() = 0;
 };
 
 // P4-a placeholder: the Orca JSON-RPC connection (P2) is not built yet, so
 // every request fails with a well-formed error and state stays disconnected.
 class NullOrcaBridge final : public OrcaBridge {
 public:
+    void setEventSink(EventSink /*sink*/) override {}
     OrcaState state() const override { return OrcaState::kDisconnected; }
     nlohmann::json descriptor() const override { return nlohmann::json(nullptr); }
-    nlohmann::json request(const std::string& /*method*/, const nlohmann::json& /*params*/,
-                           std::uint64_t /*timeoutMs*/) override {
-        throw LinkError("orca_unavailable", "The Orca connection is not implemented yet (P2)");
+    void request(const std::string& /*id*/, const std::string& /*method*/,
+                 const nlohmann::json& /*params*/, std::uint64_t /*timeoutMs*/,
+                 RequestDone done) override {
+        if (done) {
+            done(std::nullopt,
+                 LinkError("orca_unavailable", "The Orca connection is not paired yet"));
+        }
     }
     void subscribe(const std::string& /*id*/, const std::string& /*method*/,
                    const nlohmann::json& /*params*/) override {}
     void unsubscribe(const std::string& /*id*/) override {}
     void unsubscribeAll() override {}
+    void shutdown() override {}
 };
 
 }  // namespace orca::gateway

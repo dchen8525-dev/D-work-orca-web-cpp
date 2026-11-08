@@ -8,9 +8,8 @@
 
 namespace orca::ui {
 
-// P4 runtime status: the real hub connection state from the worker-thread
-// HubClient, layered over the config file. The Orca side reports whatever the
-// bridge says, which is "disconnected" for the P4-a null bridge.
+// P4 runtime status: the real hub and Orca connection state from the
+// worker-thread HubClient, layered over the config file.
 class RuntimeStatusProvider final : public StatusProvider {
 public:
     RuntimeStatusProvider(std::filesystem::path configPath,
@@ -30,8 +29,8 @@ public:
         status.version = orca::buildVersion();
         status.pairedVia = file.orca.deviceToken.empty() ? std::string{} : std::string("local-orca");
         status.hubConnected = hub.hubConnected;
-        // The null bridge has no state changes; P2's real bridge drives this.
-        status.orcaState = "disconnected";
+        status.orcaState = hub.orcaState;
+        status.orcaMachineName = hub.orcaMachineName;
         status.configNote = file.error.empty()
             ? (hub.hubConnected
                    ? std::string{}

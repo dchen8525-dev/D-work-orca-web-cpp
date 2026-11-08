@@ -128,7 +128,7 @@ cmake -S . -B build -U ORCA_BUILD_VERSION
 | 目标 | 上限 |
 |---|---|
 | `orca-server` / 无 Qt 的 CLI 骨架 | 8 MiB |
-| `orca-gateway` 链接**静态 Qt** 时 | 60 MiB（实测 56.0 MiB，2026-11-08 回填；静态 ICU + beast 网络栈） |
+| `orca-gateway` 链接**静态 Qt** 时 | 60 MiB（实测 59,913,728 B ≈ 57.1 MiB，2026-11-08 含 P2 Orca 桥；静态 ICU + beast 网络栈） |
 | `orca-gateway` 动态 Qt 验证构建 | 8 MiB（DLL 体积不计入 exe 本体） |
 | deb | 10 MiB（P6 打包步骤用同一脚本） |
 

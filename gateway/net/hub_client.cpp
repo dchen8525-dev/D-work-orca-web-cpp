@@ -1,5 +1,9 @@
 #include <orca/gateway/net/hub_client.hpp>
 
+#include <orca/gateway/net/tls_roots.hpp>
+
+#include <boost/asio/post.hpp>
+
 #include <deque>
 #include <random>
 #include <utility>
@@ -65,10 +69,21 @@ HubClient::HubClient(std::string hubUrl, std::string gatewayKey, std::string gat
     {
         std::lock_guard lock(mutex_);
         state_.hubUrl = hubUrl_;
+        if (bridge_) state_.orcaState = orcaStateName(bridge_->state());
+    }
+    // Bridge events arrive on the bridge worker; marshal them onto our own
+    // io_context so handleFrame/send stay single-threaded.
+    if (bridge_) {
+        bridge_->setEventSink([this](const BridgeEvent& event) {
+            asio::post(io_, [this, event] { handleBridgeEvent(event); });
+        });
     }
 }
 
 HubClient::~HubClient() {
+    // Stop the bridge first: its callbacks post into io_, which must still be
+    // alive while its worker drains.
+    if (bridge_) bridge_->shutdown();
     stop();
 }
 
@@ -129,10 +144,9 @@ void HubClient::beginAttempt() {
     handshakeDone_ = false;
     if (url_.secure && !sslCtx_) {
         sslCtx_.emplace(asio::ssl::context::tls_client);
-        // Windows keeps the system roots outside OpenSSL's default store; the
-        // explicit CA bundle story lands with the P6 packaging work.
-        boost::system::error_code ec;
-        sslCtx_->set_default_verify_paths(ec);
+        // Windows keeps its roots outside OpenSSL's default store, so load the
+        // OS trust anchors (tls_roots.hpp) instead of the empty bundle.
+        installSystemTrust(*sslCtx_);
         sslCtx_->set_verify_mode(asio::ssl::verify_peer);
     }
     resolver_.async_resolve(url_.host, url_.port,
@@ -378,26 +392,31 @@ void HubClient::handleFrame(const nlohmann::json& frame) {
 }
 
 void HubClient::handleRequest(const HubLinkCore::DownDecision& decision) {
-    nlohmann::json result;
-    try {
-        result = bridge_->request(decision.method, decision.params, decision.timeoutMs);
-        send(nlohmann::json{{"type", "request-result"},
-                            {"id", decision.id},
-                            {"ok", true},
-                            {"result", result}});
-    } catch (const LinkError& error) {
-        send(nlohmann::json{{"type", "request-result"},
-                            {"id", decision.id},
-                            {"ok", false},
-                            {"error", nlohmann::json{{"code", error.code},
-                                                     {"message", error.what()}}}});
-    } catch (const std::exception& error) {
-        send(nlohmann::json{{"type", "request-result"},
-                            {"id", decision.id},
-                            {"ok", false},
-                            {"error", nlohmann::json{{"code", "orca_error"},
-                                                     {"message", error.what()}}}});
-    }
+    if (!bridge_) return;
+    // The bridge answers on its own worker thread; hop back to io_ before
+    // touching the socket so reads/writes stay serialized.
+    bridge_->request(
+        decision.id, decision.method, decision.params, decision.timeoutMs,
+        [this, id = decision.id](std::optional<nlohmann::json> result,
+                                 std::optional<LinkError> error) {
+            asio::post(io_, [this, id, result = std::move(result),
+                             error = std::move(error)]() mutable {
+                if (stopped_) return;
+                if (error) {
+                    send(nlohmann::json{{"type", "request-result"},
+                                        {"id", id},
+                                        {"ok", false},
+                                        {"error", nlohmann::json{{"code", error->code},
+                                                                 {"message", error->what()}}}});
+                    return;
+                }
+                send(nlohmann::json{{"type", "request-result"},
+                                    {"id", id},
+                                    {"ok", true},
+                                    {"result", result ? std::move(*result)
+                                                      : nlohmann::json()}});
+            });
+        });
 }
 
 void HubClient::teardown(const std::string& why, std::uint16_t closeCode, const std::string& closeReason) {
@@ -450,15 +469,28 @@ void HubClient::pumpWrites() {
 }
 
 void HubClient::handleBridgeEvent(const BridgeEvent& event) {
-    // Bridge events flow through the P2 bridge's event pipe; the null bridge
-    // never emits any. Kept for the P2 integration point.
+    // Posted here from the bridge's worker thread (see the event sink installed
+    // in the constructor); the null bridge never emits any.
     switch (event.kind) {
-        case BridgeEvent::Kind::kState:
-            send(nlohmann::json{{"type", "orca-state"},
-                                {"state", event.state}});
+        case BridgeEvent::Kind::kState: {
+            {
+                std::lock_guard lock(mutex_);
+                state_.orcaState = event.state;
+            }
+            if (log_) log_("orca state: " + event.state);
+            nlohmann::json frame{{"type", "orca-state"}, {"state", event.state}};
+            if (!event.message.empty()) frame["message"] = event.message;
+            send(frame);
             return;
-        case BridgeEvent::Kind::kOrca:
+        }
+        case BridgeEvent::Kind::kOrca: {
+            std::lock_guard lock(mutex_);
+            if (event.payload.is_object() && event.payload.contains("machineName") &&
+                event.payload.at("machineName").is_string()) {
+                state_.orcaMachineName = event.payload.at("machineName").get<std::string>();
+            }
             return;  // the next hello carries the descriptor
+        }
         case BridgeEvent::Kind::kStreamFrame:
             send(nlohmann::json{{"type", "stream-frame"}, {"id", event.id},
                                 {"result", event.payload}});

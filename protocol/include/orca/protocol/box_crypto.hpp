@@ -10,6 +10,19 @@ namespace orca::protocol {
 // could cover (P1-c). All functions validate input sizes and return nullopt
 // instead of throwing; libsodium itself is initialised once, thread-safely.
 
+// CSPRNG bytes (libsodium randombytes_buf). Used for E2EE nonces and request
+// ids; returns nullopt only if libsodium refuses to initialise.
+std::optional<orca::crypto::Bytes> randomBytes(std::size_t count);
+
+struct BoxKeyPair {
+    orca::crypto::Bytes publicKey;  // 32
+    orca::crypto::Bytes secretKey;  // 32
+};
+
+// crypto_box_keypair: the X25519 keypair the E2EE client half generates per
+// socket (nacl.box.keyPair() in e2ee-v2-client.ts).
+std::optional<BoxKeyPair> boxKeypair();
+
 // Raw X25519: crypto_scalarmult. n = own secret key, p = peer public key.
 std::optional<orca::crypto::Bytes> boxScalarMult(const orca::crypto::Bytes& secretKey,
                                                  const orca::crypto::Bytes& publicKey);

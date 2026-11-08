@@ -16,6 +16,7 @@ set(ORCA_GATEWAY_UI_HEADERS
 set(ORCA_GATEWAY_UI_SOURCES
     ${ORCA_GATEWAY_UI_HEADERS}
     ui/config_store.cpp
+    ui/local_orca.cpp
     ui/pairing.cpp
     ui/status_model.cpp
     ui/main_window.cpp)
@@ -27,8 +28,18 @@ if(ORCA_HAVE_QT)
     # The outbound hub link needs Boost.Beast; a tree without it still builds
     # the window (skeleton status provider, no runtime thread).
     if(ORCA_BEAST_INCLUDE_DIR)
-        list(APPEND ORCA_GATEWAY_NET_SOURCES net/hub_link_core.cpp net/hub_client.cpp)
-        list(APPEND ORCA_GATEWAY_NET_LIBS OpenSSL::SSL Threads::Threads)
+        list(APPEND ORCA_GATEWAY_NET_SOURCES
+            net/hub_link_core.cpp net/hub_client.cpp net/tls_roots.cpp)
+        # crypt32: CertOpenSystemStore (tls_roots.cpp).
+        list(APPEND ORCA_GATEWAY_NET_LIBS OpenSSL::SSL Threads::Threads crypt32)
+        # P2: the real Orca bridge runs the E2EE v2 handshake, so it needs
+        # libsodium on top of Beast. Without it the gateway keeps the null
+        # bridge and still connects to the hub.
+        if(ORCA_HAVE_SODIUM)
+            list(APPEND ORCA_GATEWAY_NET_SOURCES
+                net/orca_rpc_client.cpp
+                net/orca_bridge_impl.cpp)
+        endif()
     endif()
 
     add_executable(orca-gateway
@@ -51,6 +62,9 @@ if(ORCA_HAVE_QT)
 
     if(ORCA_BEAST_INCLUDE_DIR)
         target_compile_definitions(orca-gateway PRIVATE ORCA_HAVE_HUB_CLIENT=1)
+    endif()
+    if(ORCA_BEAST_INCLUDE_DIR AND ORCA_HAVE_SODIUM)
+        target_compile_definitions(orca-gateway PRIVATE ORCA_HAVE_ORCA_BRIDGE=1)
     endif()
 
     if(WIN32)
@@ -76,8 +90,9 @@ if(ORCA_HAVE_QT)
         # Measured 2026-11-07 (MSVC 19.51 / Release / static Qt 6.11.3 via
         # vcpkg defaults, including static ICU + OpenSSL): 52,764,160 bytes
         # (~50.3 MiB). The 24 MiB estimate did not account for static ICU.
-        # 2026-11-08: the P4-a beast/websocket hub client adds ~5.7 MiB;
-        # measured 58,750,464 bytes (~56.0 MiB), so the budget moves to 60 MiB.
+        # 2026-11-08: the P4-a beast/websocket hub client adds ~5.7 MiB
+        # (58,750,464 bytes); the P2 Orca bridge + Windows root store another
+        # 1.16 MB -- measured 59,913,728 bytes (~57.1 MiB). Budget: 60 MiB.
         # Trim the ICU feature if the artifact ever needs to shrink (must be
         # changed for CI in the same commit).
         set(ORCA_GATEWAY_MAX_BYTES 62914560)

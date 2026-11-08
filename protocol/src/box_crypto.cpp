@@ -30,6 +30,24 @@ constexpr std::size_t kMacSize = 16;
 
 }  // namespace
 
+std::optional<Bytes> randomBytes(std::size_t count) {
+    ensureSodium();
+    Bytes out(count);
+    if (count > 0) randombytes_buf(out.data(), count);
+    return out;
+}
+
+std::optional<BoxKeyPair> boxKeypair() {
+    ensureSodium();
+    BoxKeyPair pair;
+    pair.publicKey.resize(kKeySize);
+    pair.secretKey.resize(kKeySize);
+    if (crypto_box_keypair(pair.publicKey.data(), pair.secretKey.data()) != 0) {
+        return std::nullopt;
+    }
+    return pair;
+}
+
 std::optional<Bytes> boxScalarMult(const Bytes& secretKey, const Bytes& publicKey) {
     if (secretKey.size() != kKeySize || publicKey.size() != kKeySize) return std::nullopt;
     ensureSodium();

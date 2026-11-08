@@ -80,7 +80,7 @@ P0 实测（MSVC 19.51 / Release /O1 + LTO + 静态 CRT）：CLI 骨架 `orca-ga
 | 目标 | 上限 | 说明 |
 |---|---|---|
 | `orca-server`（及 CLI 骨架） | 8 MiB | 纯 C++ 逻辑，不含 Qt |
-| `orca-gateway`（静态 Qt） | **60 MiB** | 实测 56.0 MiB（静态 Qt 6.11.3 按 vcpkg 默认 feature，含静态 ICU + OpenSSL + beast），2026-11-08 回填 |
+| `orca-gateway`（静态 Qt） | **60 MiB** | 实测 57.1 MiB（静态 Qt 6.11.3 按 vcpkg 默认 feature，含静态 ICU + OpenSSL + beast），2026-11-08 回填 |
 | deb | 10 MiB | P6 打包步骤用同一脚本 |
 
 体积的主因是**静态 ICU**（vcpkg qtbase 默认 feature，约 25-30 MB），P4-a 的 beast 出站
