@@ -76,9 +76,11 @@ if(ORCA_HAVE_QT)
         # Measured 2026-11-07 (MSVC 19.51 / Release / static Qt 6.11.3 via
         # vcpkg defaults, including static ICU + OpenSSL): 52,764,160 bytes
         # (~50.3 MiB). The 24 MiB estimate did not account for static ICU.
-        # 56 MiB leaves headroom; trim the ICU feature if the artifact ever
-        # needs to shrink (must be changed for CI in the same commit).
-        set(ORCA_GATEWAY_MAX_BYTES 58720256)
+        # 2026-11-08: the P4-a beast/websocket hub client adds ~5.7 MiB;
+        # measured 58,750,464 bytes (~56.0 MiB), so the budget moves to 60 MiB.
+        # Trim the ICU feature if the artifact ever needs to shrink (must be
+        # changed for CI in the same commit).
+        set(ORCA_GATEWAY_MAX_BYTES 62914560)
     else()
         # Dynamic Qt: the DLLs live beside the exe, so the exe itself stays small.
         set(ORCA_GATEWAY_MAX_BYTES 8388608)

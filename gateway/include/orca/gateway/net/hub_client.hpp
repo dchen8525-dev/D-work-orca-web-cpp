@@ -70,8 +70,10 @@ private:
     void beginAttempt();
     void onResolved(boost::system::error_code ec,
                     boost::asio::ip::tcp::resolver::results_type results);
+    void startWsHandshake();
     void onHandshake(boost::system::error_code ec);
     void scheduleRetry();
+    void stopRetryTimer();
     void doRead();
     void onRead(boost::system::error_code ec, std::size_t);
     void onPingTimer(boost::system::error_code ec);
@@ -103,6 +105,7 @@ private:
     std::deque<std::string> writeQueue_;
     bool writing_ = false;
     std::optional<boost::asio::steady_timer> pingTimer_;
+    std::optional<boost::asio::steady_timer> retryTimer_;
     std::uint64_t lastFrameAtMs_ = 0;
     int attempt_ = 0;
     bool handshakeDone_ = false;

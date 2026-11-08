@@ -128,7 +128,7 @@ cmake -S . -B build -U ORCA_BUILD_VERSION
 | 目标 | 上限 |
 |---|---|
 | `orca-server` / 无 Qt 的 CLI 骨架 | 8 MiB |
-| `orca-gateway` 链接**静态 Qt** 时 | 56 MiB（实测 50.3 MiB，2026-11-07 回填；超限主因是静态 ICU） |
+| `orca-gateway` 链接**静态 Qt** 时 | 60 MiB（实测 56.0 MiB，2026-11-08 回填；静态 ICU + beast 网络栈） |
 | `orca-gateway` 动态 Qt 验证构建 | 8 MiB（DLL 体积不计入 exe 本体） |
 | deb | 10 MiB（P6 打包步骤用同一脚本） |
 
@@ -137,7 +137,7 @@ cmake -S . -B build -U ORCA_BUILD_VERSION
 ```
 
 本机实测：CLI 骨架 `orca-gateway.exe` 251,392 B、`orca-server.exe` 246,272 B；
-动态 Qt 验证构建的 gateway exe 为 240,128 B（旁边 17 个 DLL 约 58 MB，正是不发布动态配置的原因）。
+动态 Qt 验证构建的 gateway exe 为 1,167,872 B（P4-a 后含 beast；旁边 17 个 DLL 约 58 MB，正是不发布动态配置的原因）。
 
 ## 编译器策略
 

@@ -1,6 +1,6 @@
 # HANDOFF — 当前进展交接
 
-> 生成时间:2026-11-08 09:0x GMT+8(第三轮,接 11-07 的第二轮)
+> 生成时间:2026-11-08 10:1x GMT+8(第四轮,接同日上午的第三轮)
 > 仓库:`D:\work\orca-cpp`(分支 `main`,远端 `git@github.com:dchen8525-dev/D-work-orca-web-cpp.git`)
 > 本文件是**当前状态的权威快照**;`README.md` 是设计说明,协议细节以 `docs/PROTOCOL.md` 为准。
 > 原项目 `D:\work\orca-web` 保持只读参考,不要改动。
@@ -9,11 +9,10 @@
 
 ## 0. 一句话状态
 
-**P1-c(E2EE)、P3-a(hub 真实服务)、deb 打包、静态 Qt 交付验证全部完成并提交**;
-**P4-a(gateway 后台 hub 客户端)完成约 90%**:全部代码与接线已写完、orca-gateway 与
-12/13 测试构建通过,但 `hub_client_live` 测试目标有一个**最后的编译错误**卡在
-`hub_client.cpp:144`(async_connect 重载匹配),修掉后跑通 live 测试即可提交。
-所有 commit **均未 push**,远端 `main` 仍是 `f11dc93`(不含任何 UI/E2EE/hub/打包)。
+**P4-a(gateway 出站 hub 客户端)已完成并全链路验证**:编译、回环 live 测试 8/8、
+ctest 13/13、`build.ps1` 退出 0、真实本地 `orca-server` 冒烟(UI 状态卡显示「已连接」)。
+当前 HEAD 为本次 P4-a 收尾提交,共 9 个本地 commit,**全部未 push**;远端 `main` 仍是 `f11dc93`。
+下一步是 **P4-b + P2:真实 Orca JSON-RPC 桥**(见 §2)。
 
 ---
 
@@ -21,15 +20,16 @@
 
 | 里程碑 | commit | 内容 | 验证 |
 |---|---|---|---|
-| 静态交付配置 | `0b415e5` | 静态 Qt 单 exe 50.3 MiB,门禁回填 56 MiB | 空目录独立运行 + 真实弹窗 + ctest |
-| P1-c E2EE | `a8efa8b` | `box_crypto`(scalarmult/beforenm/secretbox)+ `e2ee_session` 计数器会话 | tweetnacl 跨实现向量逐字节对齐 |
-| deb 打包 | `8226b2b` | `packaging/build-deb.sh`(dpkg-deb 直打包)+ systemd unit + conffile | VPS 构建 233.8 KiB;dpkg 冲突保护实测 |
+| 静态交付配置 | `0b415e5` | 静态 Qt 单 exe,门禁回填 | 空目录独立运行 + 真实弹窗 + ctest |
+| P1-c E2EE | `a8efa8b` | `box_crypto` + `e2ee_session` 计数器会话 | tweetnacl 跨实现向量逐字节对齐 |
+| deb 打包 | `8226b2b` | `packaging/build-deb.sh` + systemd unit + conffile | VPS 构建 233.8 KiB;dpkg 冲突保护实测 |
 | P3-a hub | `72636bc` | HTTP API 五件套 + WS 双端 + scrypt 登录 + 会话存储 + `--init-config` + 限速/CSP | ctest 11/11、HTTP 10 轮、Node WS 端到端 9/9 |
-| **P4-a 进行中** | (未提交,见 §3) | gateway 出站 hub 客户端 + UI 真实状态接线 | 12/13 测试过,live 测试编译卡住 |
+| **P4-a hub 客户端** | 本次提交 | 出站 WS 客户端 + hello/ping/pong/request 转发 + 退避重连 + UI 真实状态接线 | live 8/8、ctest 13/13、真实 hub UI 冒烟 |
 
-提交栈(main,8 个 commit,均未 push):
+提交栈(main,9 个 commit,均未 push):
 ```
-(HEAD, WIP)  P4-a gateway hub client —— 部分文件已改未提交,建议先 commit WIP
+HEAD     P4-a: finish gateway hub client — WS upgrade, clean shutdown, live test
+f785e72  P4-a (WIP): gateway outbound hub client
 72636bc  P3-a: real hub service
 e39a7fa  Fix GCC warnings surfaced by the VPS deb build
 8226b2b  Add plain dpkg-deb packaging for the hub
@@ -44,21 +44,13 @@ f11dc93  ← 远端 main 在这里
 
 ## 2. 后端任务安排(按优先级,接手后照此推进)
 
-### 🔴 P4-a 收尾(当前任务,预计 <1 小时)
-1. 修 `gateway/net/hub_client.cpp:144` 的编译错误(详见 §3.2)。
-2. 构建 `orca_hub_client_live_tests` 并跑通(回环 hub fixture:hello→welcome、
-   ping→pong、request→null 桥的 orca_unavailable 错误回程、断线重连二次 hello)。
-3. 全套 ctest 13/13 + 交付回归(build.ps1 exit 0;注意动态 Qt 门禁 8 MiB 是否被
-   beast 推爆,超了就按静态门的先例实测回填)。
-4. 手工冒烟:配一个真 hub 地址(本地跑 `orca-server` + `--init-config`)启动
-   gateway 窗口,确认状态卡 hubConnected 变真。
-5. commit(信息里写清 hub-link.ts 对齐点),**不 push**。
-
-### 🟠 P4-b + P2:Orca JSON-RPC 桥(让 orcaState 卡片变真)
+### 🔴 P4-b + P2:Orca JSON-RPC 桥(让 orcaState 卡片变真)
 1. 读原项目 `src/gateway/orca/rpc-client.ts` + `agent-session.ts` + `local-pairing.ts`,
    实现 C++ `OrcaBridge` 真实版(loopback 连接桌面 Orca,E2EE v2 会话已就绪于 P1-c)。
-2. `orca-state` 变更事件推送上 hub(hub_client.cpp 的 `handleBridgeEvent` 已留好 P2 挂点)。
+2. `orca-state` 变更事件推送上 hub(hub_client.cpp 的 `handleBridgeEvent` 已留好挂点)。
 3. 配对码解析(`gateway/ui/pairing.cpp` 已有)+ device token 接入。
+4. 注意 `NullOrcaBridge` 是当前唯一实现,`request` 恒返回 `orca_unavailable`;
+   换实现时 live 测试要同步改成注入假 bridge,保持可测。
 
 ### 🟡 P5:零构建前端
 `web/` 只有方案文档。按 `web/README.md` 的硬约束写 `index.html`+ES modules+
@@ -77,61 +69,40 @@ f11dc93  ← 远端 main 在这里
    见 `hub_client.cpp` 的注释)。
 
 ### 🟢 随时
-- **push**:8 个 commit 全在本地,远端 main 是 P0 骨架。push 后 CI 会首跑静态流水线。
+- **push**:9 个 commit 全在本地,远端 main 是 P0 骨架。push 后 CI 会首跑静态流水线。
 - 三个构建目录策略统一(build/ 交付、build-ui/ 动态 Qt 验证、build-noqt/ 骨架)。
 
 ---
 
-## 3. P4-a 交接点(接手第一件事)
+## 3. P4-a 完成记录(接手参考)
 
-### 3.1 已写完的文件(全部可编译,除 §3.2 那一处)
+### 3.1 收尾时修掉的三个真问题
 
-| 文件 | 状态 |
-|---|---|
-| `gateway/net/hub_link_core.{hpp,cpp}` | ✅ 纯逻辑:hello 构造、下行帧决策(pong/日志/4003/转发)、backoff(500ms→30s±20%)、静默 75s。**单测已过** |
-| `gateway/include/orca/gateway/net/orca_bridge.hpp` | ✅ 接口 + `NullOrcaBridge`(P4-a 占位:request 抛 `orca_unavailable`) |
-| `gateway/include/orca/gateway/net/hub_client.hpp` + `gateway/net/hub_client.cpp` | ⚠️ 逻辑完成,144 行编译错(见 §3.2) |
-| `gateway/ui/runtime_status_provider.hpp` | ✅ AdminStatus 用真实 HubClient snapshot |
-| `gateway/ui/config_store.{hpp,cpp}` | ✅ 新增 `gatewayId`(文件键或主机名,`orca::hostName()`) |
-| `gateway/ui/main_window.{hpp,cpp}` | ✅ 新增带 StatusProvider 的 ctor 重载(旧签名保留) |
-| `gateway/main.cpp` | ✅ `ORCA_HAVE_HUB_CLIENT` 门控:配置了 serverUrl+key 就起 worker 线程 |
-| `gateway/CMakeLists.txt` | ✅ net 源按 beast 有无条件编译 |
-| `tests/unit/hub_link_core_test.cpp` | ✅ **已通过** |
-| `tests/unit/hub_client_live_test.cpp` | ⚠️ 依赖 §3.2;回环 hub fixture(纯 beast 服务端)已写好 |
+| 问题 | 症状 | 修法 |
+|---|---|---|
+| **缺 WS 客户端升级** | TCP/TLS 连上后直接把 hello 当裸 WS 帧写出,hub 看不到 HTTP Upgrade,写操作立刻 operation_aborted | 新增 `startWsHandshake()`:对 `TcpWs`/`SslWs` 调 `async_handshake(host, path)`,Host 带非默认端口 |
+| boost 1.90 API 变更 | `basic_socket::async_connect(results, ...)` 已删除 | 改用自由函数 `asio::async_connect(*socket, results, handler)` |
+| 关闭时挂死 | `stop()` 只 `io_.stop()`,socket 未关、work guard 未释放;对端仍有 pending read,测试 join 永久阻塞 | `stop()` 向 io_ post:取消 ping/retry 定时器、`beast::get_lowest_layer(...).close()`、`workGuard_.reset()`,再 join;stream 在 join 后才析构 |
 
-### 3.2 卡点:`hub_client.cpp:144` C2672
+附带:`finishAttempt()` 在 `stopped_` 后直接返回(避免 stop 期间再排重连定时器);
+retry 定时器改为成员 `retryTimer_`,可取消;删除未使用的 `kConnectTimeoutMs/kReadSlackMs`;
+`onFrame` 的 `if constexpr` 补 `else`,消掉 C4702。
 
-```
-socket->async_connect(results, [this, socket](boost::system::error_code connectEc,
-                              const asio::ip::tcp::endpoint&) { ... });
-```
-boost 1.90 报 "async_connect: 未找到匹配的重载函数"(results-range 版本与该 lambda
-签名不匹配)。**三个备选修法,推荐 ①**:
-1. **改同步连接**(最稳):worker 线程本来就是用来阻塞的——
-   `boost::system::error_code ec; socket->connect(*results.begin(), ec);`
-   失败走 finishAttempt,成功后 continue 走 TLS/ws 握手。同步 connect 也顺手解决
-   了连接超时问题(tcp_stream 不再用,见下)。
-2. 单端点 + 完整签名:`socket->async_connect(endpoint, [](ec){})` 且 lambda 签名
-   必须恰好 `void(boost::system::error_code)`(不带 endpoint)。
-3. `asio::async_connect(*socket, results, handler)` 自由函数版本(handler 签名
-   `void(ec, endpoint_type)`)。
+### 3.2 验证链(已全部跑过)
 
-**注意:连接层已从 tcp_stream 换回裸 `asio::ip::tcp::socket`**——beast tcp_stream 的
-`expires_after()` 会在 read 路径重排超时的同时**中止在途的 write**(实测:
-handshake 后 hello 写入立刻 operation_aborted)。静默检测现在完全由 25s ping +
-75s 静默检查承担(与 TS 版一致),读路径无超时。若有人想恢复 tcp_stream 超时,
-必须接受这个语义。
+1. `cmake --build build --config Release --target orca_hub_client_live_tests` ✅
+2. live 测试 8/8:hello 字段、hubConnected 快照、ping→pong、null bridge 的
+   `orca_unavailable` 回程、断线重连第二次 hello、stop 不崩 ✅
+3. `ctest` 13/13;`scripts/build.ps1` 退出 0 ✅
+4. 真实冒烟:`orca-server --init-config` + `orca-gateway --config`,日志出现
+   `hub: hub accepted gateway smoke-gw`,截图确认状态卡「hub 已连通 / 已连接」✅
 
-### 3.3 §3.2 修完后的验证链
-1. `cmake --build build --config Release --target orca_hub_client_live_tests`
-2. 直接跑 exe(日志前缀 `[client]`,20s 内应打全 4 个 check);
-   ctest 单跑:`ctest -R hub_client_live -C Release`
-3. 全套 ctest 13/13;交付回归 build.ps1(**盯动态 Qt 门禁 8 MiB**,gateway 现在
-   带 beast ≈ 6+ MiB,超门禁就把动态分支的 `ORCA_GATEWAY_MAX_BYTES` 按实测回填,
-   先例见静态分支 56 MiB 的注释写法)
-4. UI 冒烟:本地起 orca-server(--init-config 拿密码),gateway.json 填
-   serverUrl=ws://127.0.0.1:8788/gateway + gatewayKey,启动窗口看 hubConnected 卡片
-5. commit + 更新本文件
+### 3.3 体积门禁
+
+- 静态 Qt gateway:beast 使实测从 50.3 MiB 涨到 **58,750,464 B(56.0 MiB)**,
+  门禁 56 → **60 MiB**(`gateway/CMakeLists.txt`),README/BUILD/DEPENDENCIES/
+  ARCHITECTURE 已同步。
+- 动态 Qt 验证构建:exe **1,167,872 B(1.14 MiB)**,8 MiB 门禁不变。
 
 ---
 
@@ -143,6 +114,7 @@ handshake 后 hello 写入立刻 operation_aborted)。静默检测现在完全�
 | `gateway/net/` + `gateway/include/orca/gateway/net/` | hub_link_core(纯逻辑)/ hub_client(beast 客户端)/ orca_bridge(接口+null) |
 | `gateway/ui/runtime_status_provider.hpp` | P4 状态源(Qt 窗口用) |
 | `common/src/crypto/scrypt.cpp` | 登录密码哈希(与 passwords.ts 格式互通) |
+| `tests/unit/hub_client_live_test.cpp` | 回环 beast hub fixture + 真实 HubClient 集成测试 |
 | `tests/vectors/p1c-vectors.json` / `p3-vectors.json` | P1-c / P3 金标准向量 |
 | `packaging/build-deb.sh` + `packaging/deb/` | deb 直打包(VPS 已验证) |
 | `docs/PROTOCOL.md` §P1-c/P3-a | 逐模块对齐表与冒烟记录 |

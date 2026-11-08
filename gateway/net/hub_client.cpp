@@ -13,9 +13,6 @@ namespace websocket = beast::websocket;
 
 namespace {
 
-constexpr std::uint64_t kConnectTimeoutMs = 10'000;
-constexpr std::uint64_t kReadSlackMs = 2'000;
-
 std::uint64_t nowMs() {
     return static_cast<std::uint64_t>(
         std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -87,7 +84,22 @@ void HubClient::stop() {
         if (stopped_ || !worker_.joinable()) return;
         stopped_ = true;
     }
-    io_.stop();
+    // Close the socket on the worker thread (sockets are not thread-safe) and
+    // drop the work guard so io_context::run() drains and returns. Without the
+    // explicit close the peer keeps a half-open connection and shutdown hangs.
+    // The stream object itself is only destroyed after join(), once every
+    // cancelled handler has run.
+    asio::post(io_, [this] {
+        stopPingTimer();
+        stopRetryTimer();
+        boost::system::error_code ignored;
+        if (auto* tcp = std::get_if<TcpWs>(&ws_)) {
+            beast::get_lowest_layer(*tcp).close(ignored);
+        } else if (auto* ssl = std::get_if<SslWs>(&ws_)) {
+            beast::get_lowest_layer(*ssl).close(ignored);
+        }
+        workGuard_.reset();
+    });
     if (worker_.joinable()) worker_.join();
 }
 
@@ -141,9 +153,11 @@ void HubClient::onResolved(boost::system::error_code ec,
     // from the connected socket afterwards (the websocket stream itself has
     // no connect operation).
     auto socket = std::make_shared<asio::ip::tcp::socket>(io_);
-    socket->async_connect(results,
-                          [this, socket](boost::system::error_code connectEc,
-                                         const asio::ip::tcp::endpoint&) {
+    // Boost 1.90 dropped the range overload from basic_socket; the free
+    // function still tries every resolved endpoint in turn.
+    asio::async_connect(*socket, results,
+                        [this, socket](boost::system::error_code connectEc,
+                                       const asio::ip::tcp::endpoint&) {
         if (stopped_) return;
         if (connectEc) {
             finishAttempt("hub connect failed: " + connectEc.message(), false);
@@ -163,13 +177,31 @@ void HubClient::onResolved(boost::system::error_code ec,
                         return;
                     }
                     ws_.emplace<SslWs>(std::move(*tls));
-                    onHandshake(boost::system::error_code());
+                    startWsHandshake();
                 });
             return;
         }
         ws_.emplace<TcpWs>(std::move(*socket));
-        onHandshake(boost::system::error_code());
+        startWsHandshake();
     });
+}
+
+// The client-side websocket upgrade (RFC 6455). beast derives the Host header
+// from this authority; the server routes on the /gateway target.
+void HubClient::startWsHandshake() {
+    const std::string defaultPort = url_.secure ? "443" : "80";
+    const std::string host =
+        url_.port == defaultPort ? url_.host : url_.host + ":" + url_.port;
+    auto onUpgrade = [this](boost::system::error_code ec) { onHandshake(ec); };
+    if (auto* tcp = std::get_if<TcpWs>(&ws_)) {
+        tcp->text(true);
+        tcp->async_handshake(host, url_.path, onUpgrade);
+        return;
+    }
+    if (auto* ssl = std::get_if<SslWs>(&ws_)) {
+        ssl->text(true);
+        ssl->async_handshake(host, url_.path, onUpgrade);
+    }
 }
 
 void HubClient::onHandshake(boost::system::error_code ec) {
@@ -205,15 +237,23 @@ void HubClient::scheduleRetry() {
     }());
     ++attempt_;
     if (log_) log_("hub retry in " + std::to_string(delay) + " ms");
-    auto retryTimer = std::make_shared<asio::steady_timer>(io_);
-    retryTimer->expires_after(std::chrono::milliseconds(delay));
-    retryTimer->async_wait([this, retryTimer](boost::system::error_code ec) {
+    stopRetryTimer();
+    retryTimer_.emplace(io_, std::chrono::milliseconds(delay));
+    retryTimer_->async_wait([this](boost::system::error_code ec) {
         if (stopped_ || ec) return;
         beginAttempt();
     });
 }
 
+void HubClient::stopRetryTimer() {
+    if (retryTimer_) {
+        retryTimer_->cancel();
+        retryTimer_.reset();
+    }
+}
+
 void HubClient::finishAttempt(const std::string& why, bool resetAttempt) {
+    if (stopped_) return;
     if (resetAttempt) attempt_ = 0;
     stopPingTimer();
     {
@@ -290,8 +330,9 @@ void HubClient::onFrame() {
         using T = std::decay_t<decltype(stream)>;
         if constexpr (std::is_same_v<T, TcpWs> || std::is_same_v<T, SslWs>) {
             return stream.got_text();
+        } else {
+            return false;
         }
-        return false;
     }, ws_);
     if (!isText) {
         buffer_.consume(buffer_.size());

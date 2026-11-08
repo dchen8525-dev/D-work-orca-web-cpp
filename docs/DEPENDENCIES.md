@@ -79,8 +79,9 @@ Qt 6 是 LGPLv3 / GPLv3 / 商业三许可。**静态链接单 exe 需要履行 L
 
 体积门禁已按 2026-11-07 实测回填：gateway 单 exe **52,764,160 B（50.3 MiB）**，
 远超最初 24 MiB 估算——主因是 vcpkg qtbase 默认 feature 打开了**静态 ICU**
-（约 25-30 MB，QSql/QNetwork 的 locale 支持用）。门禁设 56 MiB；若产物需要瘦身，
-优先裁剪 qtbase feature（先 `-icu`，需与 CI 安装参数同步），而不是放宽到接近原 Bun exe 的量级。
+（约 25-30 MB，QSql/QNetwork 的 locale 支持用）。P4-a 引入 beast/websocket 出站客户端后
+实测 58,750,464 B（56.0 MiB），门禁设 60 MiB；若产物需要瘦身，优先裁剪 qtbase feature
+（先 `-icu`，需与 CI 安装参数同步），而不是放宽到接近原 Bun exe 的量级。
 
 ## 备选方案（仅在依赖始终装不上时启用，需重新确认）
 
@@ -93,7 +94,7 @@ Qt 6 是 LGPLv3 / GPLv3 / 商业三许可。**静态链接单 exe 需要履行 L
 ## 体积回退策略
 
 体积门禁分两层：`orca-server` 与无 Qt 的 CLI 骨架仍是 **8 MiB**；链接静态 Qt 的
-`orca-gateway` 实测 50.3 MiB、门禁 **56 MiB**。`deb ≤ 10 MiB` 不受 Qt 影响（hub 是 headless 的）。
+`orca-gateway` 实测 56.0 MiB、门禁 **60 MiB**。`deb ≤ 10 MiB` 不受 Qt 影响（hub 是 headless 的）。
 
 若静态 gateway 需要进一步缩小，`/O1` + LTO + `--gc-sections` 已启用，下一步按顺序考虑：
 裁剪 qtbase feature（先 `-icu`）→ 换 `ixwebsocket` 缩小网络栈 → 重新评估 Qt 与「单文件」的取舍。
